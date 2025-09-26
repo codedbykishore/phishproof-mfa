@@ -5,7 +5,65 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-// These routes don't exist yet, so tests will fail as expected
+// Mock the database and webauthn functions for testing
+jest.mock('../../src/backend/database.js', () => ({
+  findUserById: jest.fn(),
+  createAuditEvent: jest.fn(),
+  updateUserLastLogin: jest.fn(),
+}));
+
+jest.mock('../../src/backend/webauthn.js', () => ({
+  generateAuthenticationChallenge: jest.fn(),
+  verifyAuthenticationCredential: jest.fn(),
+}));
+
+jest.mock('../../src/backend/auth.js', () => ({
+  generateToken: jest.fn(),
+}));
+
+const { findUserById, createAuditEvent, updateUserLastLogin } = require('../../src/backend/database.js');
+const { generateAuthenticationChallenge, verifyAuthenticationCredential } = require('../../src/backend/webauthn.js');
+const { generateToken } = require('../../src/backend/auth.js');
+
+// Set up default mock behaviors
+findUserById.mockReturnValue({
+  success: true,
+  user: {
+    id: 'test-credential-id',
+    username: 'testuser',
+    balance: 5000,
+  }
+});
+createAuditEvent.mockReturnValue({ success: true });
+updateUserLastLogin.mockReturnValue({ success: true });
+generateAuthenticationChallenge.mockReturnValue({
+  success: true,
+  options: {
+    challenge: 'mock-auth-challenge-base64url',
+    allowCredentials: [
+      {
+        type: 'public-key',
+        id: 'test-credential-id',
+      }
+    ],
+    timeout: 60000,
+    userVerification: 'required',
+  }
+});
+verifyAuthenticationCredential.mockReturnValue({
+  success: true,
+  userId: 'test-credential-id'
+});
+generateToken.mockReturnValue({
+  success: true,
+  token: 'mock-jwt-token',
+  expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+});
+
+// Import the routes after mocking
+const routes = require('../../src/backend/routes.js');
+app.use('/api', routes);
+
 describe('WebAuthn Authentication Endpoints Contract Tests', () => {
   describe('POST /api/webauthn/auth/challenge', () => {
     it('should generate authentication challenge for valid user', async () => {
@@ -30,6 +88,8 @@ describe('WebAuthn Authentication Endpoints Contract Tests', () => {
     });
 
     it('should reject challenge generation for non-existent user', async () => {
+      findUserById.mockReturnValueOnce({ success: false, error: 'User not found' });
+
       const response = await request(app)
         .post('/api/webauthn/auth/challenge')
         .send({ userId: 'non-existent-user' })
@@ -87,6 +147,11 @@ describe('WebAuthn Authentication Endpoints Contract Tests', () => {
     });
 
     it('should reject authentication with invalid credential', async () => {
+      verifyAuthenticationCredential.mockReturnValueOnce({
+        success: false,
+        error: 'Invalid credential'
+      });
+
       const response = await request(app)
         .post('/api/webauthn/auth/verify')
         .send({
