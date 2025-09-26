@@ -1,0 +1,142 @@
+openapi: 3.0.3
+info:
+  title: PhishProof MFA Banking API - WebAuthn Registration
+  version: 1.0.0
+  description: API contract for WebAuthn credential registration
+
+paths:
+  /api/webauthn/register/challenge:
+    post:
+      summary: Generate WebAuthn registration challenge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  description: Optional display name for the user
+              required: []
+      responses:
+        '200':
+          description: Registration challenge generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge:
+                    type: string
+                    description: Base64URL encoded challenge
+                  rp:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                        example: "PhishProof Bank"
+                      id:
+                        type: string
+                        example: "localhost"
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: User identifier (will be WebAuthn credential ID)
+                      name:
+                        type: string
+                        description: Username/display name
+                      displayName:
+                        type: string
+                        description: Display name
+                  pubKeyCredParams:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          example: "public-key"
+                        alg:
+                          type: integer
+                          example: -7
+                  timeout:
+                    type: integer
+                    example: 60000
+                  attestation:
+                    type: string
+                    example: "direct"
+                required:
+                  - challenge
+                  - rp
+                  - user
+                  - pubKeyCredParams
+
+  /api/webauthn/register/verify:
+    post:
+      summary: Verify WebAuthn registration response
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                credential:
+                  type: object
+                  description: WebAuthn credential response from navigator.credentials.create()
+                  properties:
+                    id:
+                      type: string
+                    rawId:
+                      type: string
+                    type:
+                      type: string
+                    response:
+                      type: object
+                      properties:
+                        clientDataJSON:
+                          type: string
+                        attestationObject:
+                          type: string
+                challenge:
+                  type: string
+                  description: Original challenge used for registration
+              required:
+                - credential
+                - challenge
+      responses:
+        '200':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  userId:
+                    type: string
+                    description: WebAuthn credential ID (user identifier)
+                  message:
+                    type: string
+                    example: "Registration successful"
+                required:
+                  - success
+                  - userId
+        '400':
+          description: Registration failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Invalid credential"

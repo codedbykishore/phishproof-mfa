@@ -1,0 +1,196 @@
+openapi: 3.0.3
+info:
+  title: PhishProof MFA Banking API - Dashboard & Transfers
+  version: 1.0.0
+  description: API contract for dashboard data and transfer operations
+
+paths:
+  /api/dashboard:
+    get:
+      summary: Get user dashboard data
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      username:
+                        type: string
+                      balance:
+                        type: number
+                        format: float
+                        example: 5000.00
+                      lastLogin:
+                        type: string
+                        format: date-time
+                  recentTransactions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        type:
+                          type: string
+                          enum: [credit, debit]
+                        amount:
+                          type: number
+                          format: float
+                        description:
+                          type: string
+                        timestamp:
+                          type: string
+                          format: date-time
+                        balanceAfter:
+                          type: number
+                          format: float
+                    maxItems: 10
+                required:
+                  - user
+                  - recentTransactions
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid or expired token"
+
+  /api/transfers:
+    post:
+      summary: Create a new transfer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                  format: float
+                  minimum: 0.01
+                  description: Transfer amount in rupees
+                description:
+                  type: string
+                  maxLength: 255
+                  description: Transfer description/note
+              required:
+                - amount
+                - description
+      responses:
+        '200':
+          description: Transfer created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  transaction:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      type:
+                        type: string
+                        example: "debit"
+                      amount:
+                        type: number
+                        format: float
+                      description:
+                        type: string
+                      timestamp:
+                        type: string
+                        format: date-time
+                      balanceAfter:
+                        type: number
+                        format: float
+                  newBalance:
+                    type: number
+                    format: float
+                    description: Updated account balance
+                required:
+                  - success
+                  - transaction
+                  - newBalance
+        '400':
+          description: Invalid transfer request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Insufficient balance"
+        '401':
+          description: Unauthorized
+
+  /api/audit:
+    get:
+      summary: Get audit events for the current user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Audit events retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        eventType:
+                          type: string
+                          enum: [registration, login_success, login_failure, transfer]
+                        timestamp:
+                          type: string
+                          format: date-time
+                        details:
+                          type: object
+                          description: Event-specific data (sanitized, no secrets)
+                required:
+                  - events
+        '401':
+          description: Unauthorized
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
