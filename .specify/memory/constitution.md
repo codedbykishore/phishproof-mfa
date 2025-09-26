@@ -1,50 +1,47 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# PhishProof MFA Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Code Quality (NON-NEGOTIABLE)
+Clean architecture principles MUST be followed with clear separation of concerns, dependency inversion, and single responsibility. Test coverage MUST be ≥80% with no exceptions for new code. All code MUST pass automated linting (ESLint/Prettier for JS/TS, Black/Flake8 for Python, Clippy for Rust). Git commits MUST follow conventional commit format with clear, descriptive messages.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+**Rationale**: Code quality directly impacts security, maintainability, and developer productivity. In MFA systems, bugs can create security vulnerabilities that attackers exploit.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Testing Standards (NON-NEGOTIABLE)
+Both unit tests and integration tests MUST exist for all features. Negative path testing MUST cover all error scenarios, edge cases, and failure modes. Test coverage enforcement MUST be automated in CI/CD pipeline with build failure on coverage drops. TDD approach MUST be followed: tests written → tests fail → implementation → tests pass.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale**: MFA systems are critical security infrastructure. Comprehensive testing prevents authentication bypasses, race conditions, and other security flaws that could compromise user accounts.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. User Experience Consistency
+Shared design system MUST be used across all interfaces with consistent components, typography, and spacing. UI patterns MUST be standardized for common flows (login, setup, recovery). Error handling MUST provide clear, actionable feedback to users without exposing sensitive system details. Accessibility standards (WCAG 2.1 AA) MUST be met.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Rationale**: Consistent UX reduces user confusion and support burden. Clear error handling prevents users from making insecure choices when authentication fails.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Performance Requirements
+Page load times MUST be ≤3 seconds on 3G networks (1.6 Mbps, 150ms RTT). API responses MUST complete within 300ms for all authentication operations. UI thread blocking MUST NOT exceed 50ms to maintain responsive interactions. Performance budgets MUST be enforced in CI/CD.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: Slow authentication systems lead to user abandonment and potential fallback to insecure methods. Performance directly impacts security adoption.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Security & Privacy (NON-NEGOTIABLE)
+Secrets, tokens, and credentials MUST NEVER be logged in any form. All inputs MUST be validated and sanitized server-side regardless of client-side validation. HTTPS/TLS MUST be enforced for all communications. Fail-secure defaults MUST be implemented - authentication failures default to denying access. Security headers MUST be configured on all responses.
+
+**Rationale**: Security is the primary purpose of this MFA system. Any security compromise undermines the entire system's value and puts user data at risk.
+
+### VI. Governance
+Constitution amendments MUST be proposed via pull request with detailed rationale. All amendments MUST receive approval from 2+ reviewers before merge. Constitutional compliance MUST be verified during PR reviews with documented checklist. Regular compliance audits MUST be conducted quarterly. All violations MUST be documented with justification and remediation timeline.
+
+**Rationale**: Governance ensures constitutional adherence and prevents security/quality regressions. Formal amendment process protects against hasty decisions that could compromise system integrity.
+
+## Security Standards
+
+All authentication flows MUST implement FIDO2/WebAuthn standards where supported. Multi-factor authentication MUST use time-based or cryptographic challenges, never SMS-only. Rate limiting MUST be implemented on all authentication endpoints (5 attempts per 15 minutes per user/IP). Session management MUST include secure token generation, proper expiration, and logout functionality. Data encryption MUST use industry-standard algorithms (AES-256, RSA-2048+) with proper key management.
+
+## Development Standards
+
+Code reviews MUST verify constitutional compliance before approval. All dependencies MUST be security-scanned for known vulnerabilities. Database migrations MUST be reversible and tested in staging environment. API versioning MUST follow semantic versioning with backward compatibility guarantees. Deployment MUST be automated with rollback capability and health checks.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices and policies. All pull requests MUST include a constitutional compliance checklist completed by the reviewer. Any exceptions to constitutional principles MUST be documented with security impact assessment and temporary timeline for remediation. Constitution violations in production MUST trigger immediate incident response procedures.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2025-09-26 | **Last Amended**: 2025-09-26

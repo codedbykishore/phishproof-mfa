@@ -47,7 +47,41 @@
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**Code Quality Gates**:
+- [ ] Clean architecture with clear separation of concerns
+- [ ] Test coverage plan ≥80% for all new code
+- [ ] Linting configuration defined for chosen tech stack
+- [ ] Conventional commit format planned
+
+**Testing Standards Gates**:
+- [ ] Unit and integration test strategy defined
+- [ ] Negative path testing scenarios identified
+- [ ] TDD approach confirmed (tests before implementation)
+- [ ] CI/CD test enforcement configured
+
+**User Experience Gates**:
+- [ ] Design system components identified/planned
+- [ ] Error handling UX patterns defined
+- [ ] Accessibility requirements documented (WCAG 2.1 AA)
+- [ ] UI consistency standards established
+
+**Performance Gates**:
+- [ ] 3-second page load budget on 3G confirmed
+- [ ] 300ms API response time budget confirmed
+- [ ] UI thread blocking limits (≤50ms) planned
+- [ ] Performance monitoring strategy defined
+
+**Security & Privacy Gates**:
+- [ ] No secrets in logs policy established
+- [ ] Input validation strategy confirmed
+- [ ] HTTPS/TLS enforcement planned
+- [ ] Fail-secure defaults identified
+- [ ] Security headers configuration planned
+
+**Governance Gates**:
+- [ ] PR review process includes constitutional compliance
+- [ ] Amendment process understood by team
+- [ ] Violation documentation process defined
 
 ## Project Structure
 
@@ -216,4 +250,4 @@ directories captured above]
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on Constitution v1.0.0 - See `/memory/constitution.md`*
