@@ -1,11 +1,11 @@
-import express from 'express';
-import {
+const express = require('express');
+const {
   generateRegistrationChallenge,
   verifyRegistrationCredential,
   generateAuthenticationChallenge,
   verifyAuthenticationCredential,
-} from './webauthn.js';
-import {
+} = require('./webauthn.js');
+const {
   createUser,
   findUserById,
   findUserByUsername,
@@ -15,8 +15,8 @@ import {
   createAuditEvent,
   getUserAuditEvents,
   updateUserLastLogin,
-} from './database.js';
-import { generateToken, authenticateToken } from './auth.js';
+} = require('./database.js');
+const { generateToken, authenticateToken } = require('./auth.js');
 
 const router = express.Router();
 
@@ -438,4 +438,4 @@ router.get('/audit', authenticateToken, async (req, res) => {
   }
 });
 
-export default router;
+module.exports = router;

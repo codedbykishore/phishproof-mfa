@@ -1,5 +1,5 @@
-import express from 'express';
-import routes from './src/backend/routes.js';
+const express = require('express');
+const routes = require('./src/backend/routes.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,10 +17,10 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
 
-export default app;
+module.exports = app;

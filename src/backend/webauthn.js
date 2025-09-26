@@ -1,10 +1,10 @@
-import {
+const {
   generateRegistrationOptions,
   verifyRegistrationResponse,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
-} from '@simplewebauthn/server';
-import crypto from 'crypto';
+} = require('@simplewebauthn/server');
+const crypto = require('crypto');
 
 // WebAuthn configuration
 const WEBAUTHN_CONFIG = {
@@ -217,7 +217,7 @@ function clearAllChallenges() {
   challenges.clear();
 }
 
-export {
+module.exports = {
   generateRegistrationChallenge,
   verifyRegistrationCredential,
   generateAuthenticationChallenge,
