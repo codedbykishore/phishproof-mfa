@@ -5,35 +5,88 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
-// Mock JWT middleware for testing
-app.use('/api/dashboard', (req, res, next) => {
-  if (!req.headers.authorization) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+// Mock the database and auth functions for testing
+jest.mock('../../src/backend/database.js', () => ({
+  findUserById: jest.fn(),
+  getUserTransactions: jest.fn(),
+  getUserBalance: jest.fn(),
+  createTransaction: jest.fn(),
+  createAuditEvent: jest.fn(),
+  getUserAuditEvents: jest.fn(),
+}));
+
+jest.mock('../../src/backend/auth.js', () => ({
+  authenticateToken: jest.fn(),
+}));
+
+const { findUserById, getUserTransactions, getUserBalance, createTransaction, createAuditEvent, getUserAuditEvents } = require('../../src/backend/database.js');
+const { authenticateToken } = require('../../src/backend/auth.js');
+
+// Set up default mock behaviors
+findUserById.mockReturnValue({
+  success: true,
+  user: {
+    id: 'test-user-id',
+    username: 'testuser',
+    balance: 5000,
+    lastLogin: new Date().toISOString(),
   }
-  next();
 });
-app.use('/api/transfers', (req, res, next) => {
-  if (!req.headers.authorization) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-  next();
+getUserTransactions.mockReturnValue({
+  success: true,
+  transactions: [
+    {
+      id: 'txn-1',
+      type: 'debit',
+      amount: 100,
+      description: 'Test transaction',
+      timestamp: new Date().toISOString(),
+      balanceAfter: 4900,
+    }
+  ]
 });
-app.use('/api/audit', (req, res, next) => {
-  if (!req.headers.authorization) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+getUserBalance.mockReturnValue({
+  success: true,
+  balance: 5000,
+});
+createTransaction.mockReturnValue({
+  success: true,
+  transaction: {
+    id: 'txn-new',
+    type: 'debit',
+    amount: 500,
+    description: 'Test transfer',
+    timestamp: new Date().toISOString(),
+    balanceAfter: 4500,
   }
+});
+createAuditEvent.mockReturnValue({ success: true });
+getUserAuditEvents.mockReturnValue({
+  success: true,
+  events: [
+    {
+      id: 'audit-1',
+      eventType: 'transfer',
+      timestamp: new Date().toISOString(),
+      details: { amount: 500, description: 'Test transfer' },
+    }
+  ]
+});
+
+// Mock authenticateToken middleware
+authenticateToken.mockImplementation((req, res, next) => {
+  req.user = { id: 'test-user-id' };
   next();
 });
 
-// These routes don't exist yet, so tests will fail as expected
+// Import the routes after mocking
+const routes = require('../../src/backend/routes.js');
+app.use('/api', routes);
 describe('Dashboard and Transfer Endpoints Contract Tests', () => {
-  const mockToken = 'Bearer mock-jwt-token';
-
   describe('GET /api/dashboard', () => {
     it('should return dashboard data with valid token', async () => {
       const response = await request(app)
         .get('/api/dashboard')
-        .set('Authorization', mockToken)
         .expect(200);
 
       expect(response.body).toHaveProperty('user');
@@ -48,6 +101,10 @@ describe('Dashboard and Transfer Endpoints Contract Tests', () => {
     });
 
     it('should reject dashboard access without token', async () => {
+      authenticateToken.mockImplementationOnce((req, res, next) => {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      });
+
       const response = await request(app).get('/api/dashboard').expect(401);
 
       expect(response.body).toHaveProperty('error');
@@ -64,7 +121,6 @@ describe('Dashboard and Transfer Endpoints Contract Tests', () => {
 
       const response = await request(app)
         .post('/api/transfers')
-        .set('Authorization', mockToken)
         .send(transferData)
         .expect(200);
 
@@ -85,14 +141,18 @@ describe('Dashboard and Transfer Endpoints Contract Tests', () => {
     });
 
     it('should reject transfer with insufficient balance', async () => {
+      getUserBalance.mockReturnValueOnce({
+        success: true,
+        balance: 100, // Less than transfer amount
+      });
+
       const transferData = {
-        amount: 10000.0, // More than default balance
+        amount: 10000.0, // More than balance
         description: 'Large transfer',
       };
 
       const response = await request(app)
         .post('/api/transfers')
-        .set('Authorization', mockToken)
         .send(transferData)
         .expect(400);
 
@@ -104,7 +164,6 @@ describe('Dashboard and Transfer Endpoints Contract Tests', () => {
     it('should reject transfer without required fields', async () => {
       const response = await request(app)
         .post('/api/transfers')
-        .set('Authorization', mockToken)
         .send({})
         .expect(400);
 
@@ -113,6 +172,10 @@ describe('Dashboard and Transfer Endpoints Contract Tests', () => {
     });
 
     it('should reject transfer without token', async () => {
+      authenticateToken.mockImplementationOnce((req, res, next) => {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      });
+
       const transferData = {
         amount: 100.0,
         description: 'Test transfer',
@@ -132,7 +195,6 @@ describe('Dashboard and Transfer Endpoints Contract Tests', () => {
     it('should return audit events with valid token', async () => {
       const response = await request(app)
         .get('/api/audit')
-        .set('Authorization', mockToken)
         .expect(200);
 
       expect(response.body).toHaveProperty('events');
@@ -156,7 +218,6 @@ describe('Dashboard and Transfer Endpoints Contract Tests', () => {
     it('should support limit parameter', async () => {
       const response = await request(app)
         .get('/api/audit?limit=10')
-        .set('Authorization', mockToken)
         .expect(200);
 
       expect(response.body).toHaveProperty('events');
@@ -165,6 +226,10 @@ describe('Dashboard and Transfer Endpoints Contract Tests', () => {
     });
 
     it('should reject audit access without token', async () => {
+      authenticateToken.mockImplementationOnce((req, res, next) => {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      });
+
       const response = await request(app).get('/api/audit').expect(401);
 
       expect(response.body).toHaveProperty('error');

@@ -280,4 +280,162 @@ router.post('/webauthn/auth/verify', async (req, res) => {
   }
 });
 
+// Dashboard Endpoint
+// GET /api/dashboard
+router.get('/dashboard', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get user details
+    const userResult = findUserById(userId);
+    if (!userResult.success) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    // Get recent transactions (last 10)
+    const transactionsResult = getUserTransactions(userId, 10);
+    if (!transactionsResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve transactions',
+      });
+    }
+
+    res.json({
+      user: {
+        id: userResult.user.id,
+        username: userResult.user.username,
+        balance: userResult.user.balance,
+        lastLogin: userResult.user.lastLogin,
+      },
+      recentTransactions: transactionsResult.transactions,
+    });
+  } catch (error) {
+    console.error('Dashboard error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// Transfer Endpoint
+// POST /api/transfers
+router.post('/transfers', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { amount, description } = req.body;
+
+    // Validate input
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid amount (positive number) is required',
+      });
+    }
+
+    if (!description || typeof description !== 'string' || description.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Description is required',
+      });
+    }
+
+    // Get current user balance
+    const balanceResult = getUserBalance(userId);
+    if (!balanceResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to check balance',
+      });
+    }
+
+    // Check sufficient balance
+    if (balanceResult.balance < amount) {
+      return res.status(400).json({
+        success: false,
+        error: 'Insufficient balance',
+      });
+    }
+
+    // Create the transaction
+    const transactionResult = createTransaction(userId, 'debit', amount, description.trim());
+    if (!transactionResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create transaction',
+      });
+    }
+
+    // Get updated balance
+    const newBalanceResult = getUserBalance(userId);
+    if (!newBalanceResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to get updated balance',
+      });
+    }
+
+    // Log audit event
+    createAuditEvent(userId, 'transfer', {
+      amount: amount,
+      description: description.trim(),
+      transactionId: transactionResult.transaction.id,
+      balanceBefore: balanceResult.balance,
+      balanceAfter: newBalanceResult.balance,
+    });
+
+    res.json({
+      success: true,
+      transaction: transactionResult.transaction,
+      newBalance: newBalanceResult.balance,
+    });
+  } catch (error) {
+    console.error('Transfer error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// Audit Endpoint
+// GET /api/audit
+router.get('/audit', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = req.query.limit ? parseInt(req.query.limit) : 50;
+
+    // Validate limit
+    if (isNaN(limit) || limit < 1 || limit > 100) {
+      return res.status(400).json({
+        success: false,
+        error: 'Limit must be a number between 1 and 100',
+      });
+    }
+
+    // Get user audit events
+    const auditResult = getUserAuditEvents(userId, limit);
+    if (!auditResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve audit events',
+      });
+    }
+
+    res.json({
+      events: auditResult.events,
+    });
+  } catch (error) {
+    console.error('Audit error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
 module.exports = router;
