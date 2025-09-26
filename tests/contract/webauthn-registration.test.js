@@ -1,10 +1,3 @@
-const request = require('supertest');
-const express = require('express');
-
-// Create a test Express app since the actual server doesn't exist yet
-const app = express();
-app.use(express.json());
-
 // Mock the database and webauthn functions for testing
 jest.mock('../../src/backend/database.js', () => ({
   findUserByUsername: jest.fn(),
@@ -17,8 +10,15 @@ jest.mock('../../src/backend/webauthn.js', () => ({
   verifyRegistrationCredential: jest.fn(),
 }));
 
-const { findUserByUsername, createAuditEvent, createUser } = require('../../src/backend/database.js');
-const { generateRegistrationChallenge, verifyRegistrationCredential } = require('../../src/backend/webauthn.js');
+import request from 'supertest';
+import express from 'express';
+
+// Create a test Express app since the actual server doesn't exist yet
+const app = express();
+app.use(express.json());
+
+import { findUserByUsername, createAuditEvent, createUser } from '../../src/backend/database.js';
+import { generateRegistrationChallenge, verifyRegistrationCredential } from '../../src/backend/webauthn.js';
 
 // Set up default mock behaviors
 findUserByUsername.mockReturnValue({ success: false, error: 'User not found' });

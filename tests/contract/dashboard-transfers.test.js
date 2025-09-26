@@ -1,10 +1,3 @@
-const request = require('supertest');
-const express = require('express');
-
-// Create a test Express app since the actual server doesn't exist yet
-const app = express();
-app.use(express.json());
-
 // Mock the database and auth functions for testing
 jest.mock('../../src/backend/database.js', () => ({
   findUserById: jest.fn(),
@@ -19,8 +12,15 @@ jest.mock('../../src/backend/auth.js', () => ({
   authenticateToken: jest.fn(),
 }));
 
-const { findUserById, getUserTransactions, getUserBalance, createTransaction, createAuditEvent, getUserAuditEvents } = require('../../src/backend/database.js');
-const { authenticateToken } = require('../../src/backend/auth.js');
+import request from 'supertest';
+import express from 'express';
+
+// Create a test Express app since the actual server doesn't exist yet
+const app = express();
+app.use(express.json());
+
+import { findUserById, getUserTransactions, getUserBalance, createTransaction, createAuditEvent, getUserAuditEvents } from '../../src/backend/database.js';
+import { authenticateToken } from '../../src/backend/auth.js';
 
 // Set up default mock behaviors
 findUserById.mockReturnValue({

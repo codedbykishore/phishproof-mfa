@@ -1,9 +1,5 @@
-const request = require('supertest');
-const express = require('express');
-
-// Create a test Express app since the actual server doesn't exist yet
-const app = express();
-app.use(express.json());
+import request from 'supertest';
+import app from '../../server.js';
 
 describe('Dashboard Display Integration Tests', () => {
   let authToken;

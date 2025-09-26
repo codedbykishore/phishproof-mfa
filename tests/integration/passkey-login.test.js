@@ -1,11 +1,5 @@
-const request = require('supertest');
-const express = require('express');
-
-// Create a test Express app since the actual server doesn't exist yet
-const app = express();
-app.use(express.json());
-
-// These routes don't exist yet, so tests will fail as expected
+import request from 'supertest';
+import app from '../../server.js';
 describe('Passkey Authentication Flow Integration Tests', () => {
   let registeredUserId;
 

@@ -1,5 +1,5 @@
-const jwt = require('jsonwebtoken');
-const { findUserById } = require('./database');
+import jwt from 'jsonwebtoken';
+import { findUserById } from './database.js';
 
 // JWT configuration
 const JWT_CONFIG = {
@@ -171,7 +171,7 @@ function isTokenNearExpiration(token) {
   return timeUntilExpiration <= fiveMinutes;
 }
 
-module.exports = {
+export {
   generateToken,
   verifyToken,
   authenticateToken,

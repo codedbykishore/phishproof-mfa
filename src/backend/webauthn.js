@@ -1,10 +1,10 @@
-const {
+import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
-} = require('@simplewebauthn/server');
-const crypto = require('crypto');
+} from '@simplewebauthn/server';
+import crypto from 'crypto';
 
 // WebAuthn configuration
 const WEBAUTHN_CONFIG = {
@@ -29,7 +29,7 @@ function generateRegistrationChallenge(username) {
     const options = generateRegistrationOptions({
       rpName: WEBAUTHN_CONFIG.rpName,
       rpID: WEBAUTHN_CONFIG.rpID,
-      userID: crypto.randomUUID(),
+      userID: Buffer.from(crypto.randomUUID(), 'utf-8'),
       userName: username,
       userDisplayName: username,
       attestationType: 'direct',
@@ -217,7 +217,7 @@ function clearAllChallenges() {
   challenges.clear();
 }
 
-module.exports = {
+export {
   generateRegistrationChallenge,
   verifyRegistrationCredential,
   generateAuthenticationChallenge,
