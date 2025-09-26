@@ -1,11 +1,11 @@
-const express = require('express');
-const {
+import express from 'express';
+import {
   generateRegistrationChallenge,
   verifyRegistrationCredential,
   generateAuthenticationChallenge,
   verifyAuthenticationCredential,
-} = require('./webauthn.js');
-const {
+} from './webauthn.js';
+import {
   createUser,
   findUserById,
   findUserByUsername,
@@ -15,38 +15,45 @@ const {
   createAuditEvent,
   getUserAuditEvents,
   updateUserLastLogin,
-} = require('./database.js');
-const { generateToken, authenticateToken } = require('./auth.js');
+} from './database.js';
+import { generateToken, authenticateToken } from './auth.js';
 
 const router = express.Router();
+
+console.log('Routes module loaded');
 
 // WebAuthn Registration Challenge Endpoint
 // POST /api/webauthn/register/challenge
 router.post('/webauthn/register/challenge', async (req, res) => {
   try {
+    console.log('Registration challenge endpoint called');
     const { username } = req.body;
 
     // Validate input
     if (!username || typeof username !== 'string' || username.trim().length === 0) {
+      console.log('Invalid username:', username);
       return res.status(400).json({
         success: false,
-        error: 'Username is required and must be a non-empty string',
+        error: 'Valid username is required',
       });
     }
 
     // Check if user already exists
     const existingUser = findUserByUsername(username.trim());
     if (existingUser.success) {
+      console.log('User already exists:', username);
       return res.status(409).json({
         success: false,
         error: 'Username already exists',
       });
     }
 
+    console.log('Generating registration challenge for:', username.trim());
     // Generate registration challenge
-    const challengeResult = generateRegistrationChallenge(username.trim());
+    const challengeResult = await generateRegistrationChallenge(username.trim());
 
     if (!challengeResult.success) {
+      console.log('Challenge generation failed:', challengeResult.error);
       return res.status(500).json({
         success: false,
         error: 'Failed to generate registration challenge',
@@ -95,7 +102,7 @@ router.post('/webauthn/register/verify', async (req, res) => {
     }
 
     // Verify the registration credential
-    const verificationResult = verifyRegistrationCredential(credential, challenge);
+    const verificationResult = await verifyRegistrationCredential(credential, challenge);
 
     if (!verificationResult.success) {
       // Log failed registration attempt
@@ -112,7 +119,12 @@ router.post('/webauthn/register/verify', async (req, res) => {
     }
 
     // Create the user account
-    const userResult = createUser(verificationResult.username, verificationResult.credentialId);
+    const userResult = createUser(
+      verificationResult.userID,
+      verificationResult.username,
+      verificationResult.credentialId,
+      verificationResult.credentialPublicKey
+    );
 
     if (!userResult.success) {
       return res.status(500).json({
@@ -167,7 +179,7 @@ router.post('/webauthn/auth/challenge', async (req, res) => {
     }
 
     // Generate authentication challenge
-    const challengeResult = generateAuthenticationChallenge(userId.trim());
+    const challengeResult = await generateAuthenticationChallenge(userId.trim());
 
     if (!challengeResult.success) {
       return res.status(500).json({
@@ -217,7 +229,7 @@ router.post('/webauthn/auth/verify', async (req, res) => {
     }
 
     // Verify the authentication credential
-    const verificationResult = verifyAuthenticationCredential(credential, challenge);
+    const verificationResult = await verifyAuthenticationCredential(credential, challenge);
 
     if (!verificationResult.success) {
       // Log failed authentication attempt
@@ -438,4 +450,4 @@ router.get('/audit', authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

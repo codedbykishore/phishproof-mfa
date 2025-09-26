@@ -1,10 +1,10 @@
-const {
+import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
-} = require('@simplewebauthn/server');
-const crypto = require('crypto');
+} from '@simplewebauthn/server';
+import { randomBytes, randomUUID } from 'crypto';
 
 // WebAuthn configuration
 const WEBAUTHN_CONFIG = {
@@ -24,23 +24,25 @@ const WEBAUTHN_CONFIG = {
 const challenges = new Map();
 
 // Generate registration challenge for new user
-function generateRegistrationChallenge(username) {
+async function generateRegistrationChallenge(username) {
   try {
-    const options = generateRegistrationOptions({
+    console.log('Generating registration challenge for username:', username);
+    console.log('WEBAUTHN_CONFIG:', WEBAUTHN_CONFIG);
+
+    // Generate a unique user ID
+    const userId = randomBytes(16);
+
+    console.log('About to call generateRegistrationOptions');
+    const options = await generateRegistrationOptions({
       rpName: WEBAUTHN_CONFIG.rpName,
       rpID: WEBAUTHN_CONFIG.rpID,
-      userID: Buffer.from(crypto.randomUUID(), 'utf-8'),
+      userID: userId,
       userName: username,
       userDisplayName: username,
-      attestationType: 'direct',
-      authenticatorSelection: {
-        authenticatorAttachment: 'platform',
-        userVerification: 'required',
-        residentKey: 'required',
-      },
-      supportedAlgorithmIDs: [-7, -257], // ES256, RS256
-      timeout: 60000,
     });
+    console.log('generateRegistrationOptions completed');
+
+    console.log('Generated options successfully:', options.challenge);
 
     // Store challenge for verification
     challenges.set(options.challenge, {
@@ -51,35 +53,21 @@ function generateRegistrationChallenge(username) {
     });
 
     // Clean up old challenges (older than 5 minutes)
-    cleanupOldChallenges();
+    // cleanupOldChallenges();
 
     return {
       success: true,
       challenge: options.challenge,
-      options: {
-        challenge: options.challenge,
-        rp: {
-          name: WEBAUTHN_CONFIG.rpName,
-          id: WEBAUTHN_CONFIG.rpID,
-        },
-        user: {
-          id: options.user.id,
-          name: username,
-          displayName: username,
-        },
-        pubKeyCredParams: options.pubKeyCredParams,
-        authenticatorSelection: options.authenticatorSelection,
-        timeout: options.timeout,
-        attestation: options.attestation,
-      },
+      options: options,
     };
   } catch (error) {
+    console.error('Error in generateRegistrationChallenge:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Verify registration response
-function verifyRegistrationCredential(credential, challenge) {
+async function verifyRegistrationCredential(credential, challenge) {
   try {
     // Get stored challenge data
     const challengeData = challenges.get(challenge);
@@ -88,7 +76,7 @@ function verifyRegistrationCredential(credential, challenge) {
     }
 
     // Verify the credential
-    const verification = verifyRegistrationResponse({
+    const verification = await verifyRegistrationResponse({
       response: credential,
       expectedChallenge: challenge,
       expectedOrigin: WEBAUTHN_CONFIG.expectedOrigin,
@@ -109,6 +97,8 @@ function verifyRegistrationCredential(credential, challenge) {
       registrationInfo: verification.registrationInfo,
       userID: challengeData.userID,
       username: challengeData.username,
+      credentialId: verification.registrationInfo.credentialID,
+      credentialPublicKey: verification.registrationInfo.credentialPublicKey,
     };
   } catch (error) {
     return { success: false, error: error.message };
@@ -116,9 +106,9 @@ function verifyRegistrationCredential(credential, challenge) {
 }
 
 // Generate authentication challenge for existing user
-function generateAuthenticationChallenge(userId) {
+async function generateAuthenticationChallenge(userId) {
   try {
-    const options = generateAuthenticationOptions({
+    const options = await generateAuthenticationOptions({
       rpID: WEBAUTHN_CONFIG.rpID,
       userVerification: 'required',
       timeout: 60000,
@@ -152,11 +142,7 @@ function generateAuthenticationChallenge(userId) {
 }
 
 // Verify authentication response
-function verifyAuthenticationCredential(
-  credential,
-  challenge,
-  expectedCredentialId
-) {
+async function verifyAuthenticationCredential(credential, challenge) {
   try {
     // Get stored challenge data
     const challengeData = challenges.get(challenge);
@@ -164,15 +150,29 @@ function verifyAuthenticationCredential(
       return { success: false, error: 'Invalid or expired challenge' };
     }
 
+    // Import database functions here to avoid circular imports
+    const { findUserById } = await import('./database.js');
+
+    // Look up user's credential from database
+    const userResult = findUserById(challengeData.userId);
+    if (!userResult.success) {
+      return { success: false, error: 'User not found' };
+    }
+
+    const user = userResult.user;
+    if (!user.credential_id || !user.credential_public_key) {
+      return { success: false, error: 'User has no registered credential' };
+    }
+
     // Verify the credential
-    const verification = verifyAuthenticationResponse({
+    const verification = await verifyAuthenticationResponse({
       response: credential,
       expectedChallenge: challenge,
       expectedOrigin: WEBAUTHN_CONFIG.expectedOrigin,
       expectedRPID: WEBAUTHN_CONFIG.rpID,
       authenticator: {
-        credentialID: expectedCredentialId,
-        credentialPublicKey: Buffer.from(expectedCredentialId, 'base64url'),
+        credentialID: Buffer.from(user.credential_id, 'base64url'),
+        credentialPublicKey: Buffer.from(user.credential_public_key, 'base64url'),
       },
       requireUserVerification: true,
     });
@@ -217,7 +217,7 @@ function clearAllChallenges() {
   challenges.clear();
 }
 
-module.exports = {
+export {
   generateRegistrationChallenge,
   verifyRegistrationCredential,
   generateAuthenticationChallenge,

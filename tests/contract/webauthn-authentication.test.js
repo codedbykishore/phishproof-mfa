@@ -1,5 +1,5 @@
-const request = require('supertest');
-const express = require('express');
+import request from 'supertest';
+import express from 'express';
 
 // Create a test Express app since the actual server doesn't exist yet
 const app = express();
@@ -22,9 +22,9 @@ jest.mock('../../src/backend/auth.js', () => ({
   authenticateToken: jest.fn(),
 }));
 
-const { findUserById, createAuditEvent, updateUserLastLogin } = require('../../src/backend/database.js');
-const { generateAuthenticationChallenge, verifyAuthenticationCredential } = require('../../src/backend/webauthn.js');
-const { generateToken, authenticateToken } = require('../../src/backend/auth.js');
+import { findUserById, createAuditEvent, updateUserLastLogin } from '../../src/backend/database.js';
+import { generateAuthenticationChallenge, verifyAuthenticationCredential } from '../../src/backend/webauthn.js';
+import { generateToken, authenticateToken } from '../../src/backend/auth.js';
 
 // Set up default mock behaviors
 findUserById.mockReturnValue({
@@ -62,7 +62,7 @@ generateToken.mockReturnValue({
 });
 
 // Import the routes after mocking
-const routes = require('../../src/backend/routes.js');
+import routes from '../../src/backend/routes.js';
 app.use('/api', routes);
 
 describe('WebAuthn Authentication Endpoints Contract Tests', () => {

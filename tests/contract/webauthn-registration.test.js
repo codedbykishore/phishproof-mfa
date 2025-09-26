@@ -1,5 +1,5 @@
-const request = require('supertest');
-const express = require('express');
+import request from 'supertest';
+import express from 'express';
 
 // Create a test Express app since the actual server doesn't exist yet
 const app = express();
@@ -17,8 +17,8 @@ jest.mock('../../src/backend/webauthn.js', () => ({
   verifyRegistrationCredential: jest.fn(),
 }));
 
-const { findUserByUsername, createAuditEvent, createUser } = require('../../src/backend/database.js');
-const { generateRegistrationChallenge, verifyRegistrationCredential } = require('../../src/backend/webauthn.js');
+import { findUserByUsername, createAuditEvent, createUser } from '../../src/backend/database.js';
+import { generateRegistrationChallenge, verifyRegistrationCredential } from '../../src/backend/webauthn.js';
 
 // Set up default mock behaviors
 findUserByUsername.mockReturnValue({ success: false, error: 'User not found' });
@@ -61,7 +61,7 @@ createUser.mockReturnValue({
 });
 
 // Import the routes after mocking
-const routes = require('../../src/backend/routes.js');
+import routes from '../../src/backend/routes.js';
 app.use('/api', routes);
 
 // These routes don't exist yet, so tests will fail as expected

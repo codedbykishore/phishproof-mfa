@@ -1,5 +1,5 @@
-const request = require('supertest');
-const express = require('express');
+import request from 'supertest';
+import express from 'express';
 
 // Create a test Express app since the actual server doesn't exist yet
 const app = express();
@@ -19,8 +19,8 @@ jest.mock('../../src/backend/auth.js', () => ({
   authenticateToken: jest.fn(),
 }));
 
-const { findUserById, getUserTransactions, getUserBalance, createTransaction, createAuditEvent, getUserAuditEvents } = require('../../src/backend/database.js');
-const { authenticateToken } = require('../../src/backend/auth.js');
+import { findUserById, getUserTransactions, getUserBalance, createTransaction, createAuditEvent, getUserAuditEvents } from '../../src/backend/database.js';
+import { authenticateToken } from '../../src/backend/auth.js';
 
 // Set up default mock behaviors
 findUserById.mockReturnValue({
@@ -80,7 +80,7 @@ authenticateToken.mockImplementation((req, res, next) => {
 });
 
 // Import the routes after mocking
-const routes = require('../../src/backend/routes.js');
+import routes from '../../src/backend/routes.js';
 app.use('/api', routes);
 describe('Dashboard and Transfer Endpoints Contract Tests', () => {
   describe('GET /api/dashboard', () => {

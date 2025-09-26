@@ -22,7 +22,9 @@ const SCHEMA = `
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    username TEXT,
+    username TEXT UNIQUE,
+    credential_id TEXT,
+    credential_public_key TEXT,
     balance REAL NOT NULL DEFAULT 5000.00 CHECK (balance >= 0),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login DATETIME
@@ -60,7 +62,14 @@ CREATE INDEX IF NOT EXISTS idx_audit_events_user ON audit_events(user_id);
 
 // Initialize database
 function initializeDatabase() {
-  db.exec(SCHEMA);
+  try {
+    console.log('Initializing database...');
+    db.exec(SCHEMA);
+    console.log('Database initialized successfully');
+  } catch (error) {
+    console.error('Database initialization failed:', error);
+    throw error;
+  }
 }
 
 // User model functions
@@ -68,15 +77,15 @@ const userQueries = {
   // Create a new user
   get create() {
     return db.prepare(`
-      INSERT INTO users (id, username, balance)
-      VALUES (?, ?, ?)
+      INSERT INTO users (id, username, credential_id, credential_public_key, balance)
+      VALUES (?, ?, ?, ?, ?)
     `);
   },
 
   // Find user by ID
   get findById() {
     return db.prepare(`
-      SELECT id, username, balance, created_at, last_login
+      SELECT id, username, credential_id, credential_public_key, balance, created_at, last_login
       FROM users
       WHERE id = ?
     `);
@@ -85,7 +94,7 @@ const userQueries = {
   // Find user by username
   get findByUsername() {
     return db.prepare(`
-      SELECT id, username, balance, created_at, last_login
+      SELECT id, username, credential_id, credential_public_key, balance, created_at, last_login
       FROM users
       WHERE username = ?
     `);
@@ -189,9 +198,9 @@ const auditQueries = {
 };
 
 // User model wrapper functions
-function createUser(id, username = null, initialBalance = 5000.0) {
+function createUser(id, username = null, credentialId = null, credentialPublicKey = null, initialBalance = 5000.0) {
   try {
-    const result = userQueries.create.run(id, username, initialBalance);
+    const result = userQueries.create.run(id, username, credentialId, credentialPublicKey, initialBalance);
     return { success: true, userId: id, changes: result.changes };
   } catch (error) {
     return { success: false, error: error.message };
