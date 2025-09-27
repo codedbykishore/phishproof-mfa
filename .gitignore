@@ -115,3 +115,16 @@ playwright-report/
 
 # Local development
 .local
+
+#copilot
+.github/
+.specify/
+specs/
+.prettierrc
+eslint.config.js
+login_response.json
+test-api.sh
+test-audit.js
+test-dashboard.js
+test-login.js
+validate-quickstart.js
