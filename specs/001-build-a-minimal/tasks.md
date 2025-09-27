@@ -111,7 +111,7 @@
 - [x] T040 Implement session timeout handling (30 minutes) in src/backend/auth.js
 - [x] T041 Implement audit event cleanup (24-hour retention) in src/backend/database.js
 
-## Phase 3.6: Polish
+## Phase 3.6: Polish & UX Enhancements
 - [ ] T042 [P] Add unit tests for WebAuthn utilities in tests/unit/test-webauthn-utils.js
 - [ ] T043 [P] Add unit tests for database operations in tests/unit/test-database.js
 - [ ] T044 [P] Add unit tests for authentication middleware in tests/unit/test-auth.js
@@ -121,6 +121,16 @@
 - [ ] T048 [P] Add JSDoc comments and code documentation
 - [ ] T049 Configure Vite build for production deployment
 - [ ] T050 Run quickstart.md validation scenarios manually
+
+## Phase 3.7: Final UX & Security Features
+- [ ] T051 Add personalized welcome message in dashboard with user greeting in src/frontend/js/app.js
+- [ ] T052 Implement red logout button with confirmation warning dialog in src/frontend/css/styles.css and src/frontend/js/app.js
+- [ ] T053 Add authentication state warnings for already-logged-in users on register/login tabs in src/frontend/js/app.js
+- [ ] T054 Implement user-to-user transfer with recipient selection and validation in src/frontend/js/app.js and src/backend/routes.js
+- [ ] T055 Add WebAuthn/passkey integration for transfer confirmation (password manager protocol) in src/frontend/js/app.js
+- [ ] T056 Complete audit log enhancements with detailed event tracking and filtering in src/backend/database.js and src/frontend/js/app.js
+- [ ] T057 Add session management warnings and auto-logout countdown in src/frontend/js/app.js
+- [ ] T058 Implement transfer history with recipient information display in src/frontend/js/app.js
 
 ## Dependencies
 - Setup (T001-T006) before everything

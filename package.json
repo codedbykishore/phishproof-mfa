@@ -5,10 +5,11 @@
   "main": "src/backend/server.js",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node server.js",
     "build": "vite build",
     "preview": "vite preview",
     "server": "node server.js",
+    "start": "node server.js",
     "test": "npm run test:unit && npm run test:contract && npm run test:integration",
     "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/unit",
     "test:contract": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/contract",

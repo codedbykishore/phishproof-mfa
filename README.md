@@ -63,10 +63,11 @@ A minimal banking prototype demonstrating phishing-resistant authentication usin
    npm install
    ```
 
-2. **Start the Server**:
+2. **Start the Development Server**:
    ```bash
-   npm run server
+   npm run dev
    ```
+   This starts the full-stack application (frontend + backend) on port 3000
 
 3. **Open in Browser**:
    Navigate to `http://localhost:3000`
@@ -132,11 +133,23 @@ specs/001-build-a-minimal/  # Feature specifications and tasks
 
 ### Available Scripts
 
-- `npm run server` - Start the development server
-- `npm run dev` - Start Vite development server for frontend
+- `npm run dev` - Start the full development server (frontend + backend on port 3000)
+- `npm start` - Same as dev (alternative command)
 - `npm run build` - Build for production
 - `npm run lint` - Run ESLint
 - `npm run test` - Run all tests
+
+### Architecture Note
+
+This app uses a **unified server approach**:
+- **Single Port (3000)**: Both frontend and backend served together
+- **Express.js**: Serves static frontend files AND handles API routes
+- **No Separate Frontend Server**: Unlike typical Vite setups, everything runs on one server
+- **Benefits**: Simpler deployment, no CORS issues, easier development
+
+**Why not separate servers?**
+- Vite dev server (5173) + Backend server (3000) = more complexity
+- Our approach: One command, one port, everything works together
 
 ### Environment Variables
 

@@ -82,14 +82,16 @@ When creating this spec from a user prompt:
 ## User Scenarios & Testing *(mandatory)*
 
 ### Primary User Story
-As a bank customer, I want to securely access my account using phishing-resistant authentication with password fallback so that I can view my balance, make transfers, and see my transaction history with multiple layers of security.
+As a bank customer, I want to securely access my personalized account using phishing-resistant authentication with enhanced security features so that I can view my balance, make both basic and user-to-user transfers, and monitor comprehensive audit logs with multiple layers of security protection.
 
 ### Acceptance Scenarios
 1. **Given** a new user visits the banking app, **When** they register with username/password and WebAuthn credential, **Then** they are redirected to login page
-2. **Given** a registered user visits the login page, **When** they enter username/password and complete WebAuthn authentication, **Then** they can access their dashboard
-3. **Given** an authenticated user is on their dashboard, **When** they make a transfer, **Then** their balance updates and a transaction record appears
-4. **Given** any user interaction occurs, **When** authentication or operations succeed/fail, **Then** clear visual indicators show results with timestamped audit entries
-5. **Given** a user completes registration, **When** the process finishes, **Then** they are redirected to the login page (not dashboard)
+2. **Given** a registered user visits the login page, **When** they enter username/password and complete WebAuthn authentication, **Then** they see personalized dashboard with welcome message
+3. **Given** an authenticated user is on their dashboard, **When** they make a basic transfer, **Then** their balance updates and a transaction record appears
+4. **Given** an authenticated user wants to send money to another user, **When** they search for recipient and initiate transfer, **Then** system requires WebAuthn confirmation for high-value transfers
+5. **Given** any user interaction occurs, **When** authentication or operations succeed/fail, **Then** clear visual indicators show results with comprehensive audit entries
+6. **Given** a user hovers over logout button, **When** the red warning appears, **Then** they see security reminder about proper session termination
+7. **Given** a user accesses audit logs, **When** they apply filters or search, **Then** they can find specific events and transaction details
 
 ### Edge Cases
 - What happens when WebAuthn registration fails due to device limitations?
@@ -97,6 +99,9 @@ As a bank customer, I want to securely access my account using phishing-resistan
 - What happens when user tries to make a transfer without sufficient balance?
 - How does system behave when WebAuthn credential becomes invalid?
 - What happens when user session expires after 30 minutes?
+- How does user-to-user transfer handle non-existent recipient usernames?
+- What happens when user cancels WebAuthn confirmation during transfer?
+- How does system handle audit log search with no matching results?
 
 ## Requirements *(mandatory)*
 
@@ -104,13 +109,16 @@ As a bank customer, I want to securely access my account using phishing-resistan
 - **FR-001**: System MUST allow users to register with username, password, and WebAuthn credentials for account access
 - **FR-002**: System MUST authenticate users through password verification followed by WebAuthn passkey verification (two-factor)
 - **FR-003**: System MUST redirect users to login page after successful registration (not dashboard)
-- **FR-004**: System MUST display account dashboard with balance and transaction history after successful two-factor authentication
-- **FR-005**: System MUST enable users to perform transfer operations that update balance and create transaction records
-- **FR-006**: System MUST record timestamped audit events for all authentication operations and transfer activities
-- **FR-007**: System MUST provide clear visual success/failure indicators for authentication and transfer operations
-- **FR-008**: System MUST maintain user session state during authenticated interactions for up to 30 minutes
-- **FR-009**: System MUST provide hosted demo accessible via public URL
-- **FR-010**: System MUST complete authentication operations within 1 second
+- **FR-004**: System MUST display personalized account dashboard with welcome message, balance, and transaction history after successful authentication
+- **FR-005**: System MUST enable users to perform basic transfer operations that update balance and create transaction records
+- **FR-006**: System MUST provide user-to-user transfer functionality with recipient search and WebAuthn confirmation for high-value transfers
+- **FR-007**: System MUST display prominent red logout button with security warning tooltip on hover
+- **FR-008**: System MUST record comprehensive timestamped audit events for all authentication, transfer, and security operations
+- **FR-009**: System MUST provide audit log filtering and search capabilities for event types, dates, and transaction details
+- **FR-010**: System MUST provide clear visual success/failure indicators for authentication and transfer operations with detailed error messages
+- **FR-011**: System MUST maintain user session state during authenticated interactions for up to 30 minutes with proper timeout warnings
+- **FR-012**: System MUST provide hosted demo accessible via public URL
+- **FR-013**: System MUST complete authentication operations within 1 second
 
 ### Non-Functional Requirements
 - **NFR-001**: WebAuthn operations MUST complete within 1 second
@@ -119,8 +127,8 @@ As a bank customer, I want to securely access my account using phishing-resistan
 
 ### Key Entities *(include if feature involves data)*
 - **User**: Represents a bank account holder with username, hashed password, WebAuthn credential ID, public key, and account balance
-- **Transaction**: Represents a money transfer with amount, timestamp, and description
-- **AuditEvent**: Represents security events with timestamp, event type, and success/failure status, retained for 24 hours
+- **Transaction**: Represents money transfers with amount, timestamp, description, type (debit/transfer_out/transfer_in), and optional recipient information
+- **AuditEvent**: Represents comprehensive security events with timestamp, event type (authentication, transfer, transfer_confirmation, security_warning, session_management), user context, success/failure status, and detailed metadata, retained for 24 hours
 
 ---
 

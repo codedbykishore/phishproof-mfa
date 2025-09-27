@@ -1,0 +1,394 @@
+openapi: 3.0.3
+info:
+  title: PhishProof MFA Banking API - User-to-User Transfers
+  version: 1.0.0
+  description: API contract for enhanced user-to-user transfer operations
+
+paths:
+paths:
+  /api/users/search:
+    get:
+      summary: Search users for transfer recipients
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Username search query
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Maximum results to return
+      responses:
+        '200':
+          description: List of matching users (masked for privacy)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  users:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "user_12345"
+                        username:
+                          type: string
+                          example: "john***"
+                        display_name:
+                          type: string
+                          example: "J***n D."
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/transfer/user:
+    post:
+      summary: Transfer money to another user with dual balance updates
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipient_id:
+                  type: string
+                  description: Target user ID
+                  example: "user_67890"
+                amount:
+                  type: number
+                  minimum: 0.01
+                  description: Transfer amount in rupees
+                  example: 500.00
+                description:
+                  type: string
+                  description: Transfer description/note
+                  example: "Lunch payment"
+                confirmation_token:
+                  type: string
+                  description: WebAuthn confirmation token for high-value transfers
+                  example: "webauthn_token_xyz"
+              required:
+                - recipient_id
+                - amount
+                - description
+      responses:
+        '200':
+          description: Transfer completed successfully with dual balance updates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Transfer completed successfully"
+                  transfer_details:
+                    type: object
+                    properties:
+                      sender_balance_before:
+                        type: number
+                        example: 5000.00
+                      sender_balance_after:
+                        type: number
+                        example: 4500.00
+                      recipient_balance_before:
+                        type: number
+                        example: 2000.00
+                      recipient_balance_after:
+                        type: number
+                        example: 2500.00
+                      amount_transferred:
+                        type: number
+                        example: 500.00
+                      sender_transaction_id:
+                        type: string
+                        example: "txn_123"
+                      recipient_transaction_id:
+                        type: string
+                        example: "txn_124"
+                      confirmation_method:
+                        type: string
+                        enum: ["password", "webauthn"]
+                        example: "webauthn"
+                      timestamp:
+                        type: string
+                        format: date-time
+                        example: "2025-09-27T14:30:15Z"
+        '400':
+          description: Invalid transfer request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    enum: ["insufficient_balance", "invalid_recipient", "invalid_amount", "confirmation_required"]
+                    example: "insufficient_balance"
+                  message:
+                    type: string
+                    example: "Insufficient balance for transfer"
+                  current_balance:
+                    type: number
+                    example: 300.00
+                  required_amount:
+                    type: number
+                    example: 500.00
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Recipient user not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "recipient_not_found"
+                  message:
+                    type: string
+                    example: "Recipient user does not exist"
+
+  /api/transfer/confirm:
+    post:
+      summary: Confirm high-value transfer with WebAuthn
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transfer_id:
+                  type: string
+                  description: Pending transfer ID
+                  example: "transfer_pending_123"
+                webauthn_response:
+                  type: object
+                  description: WebAuthn assertion response
+                  properties:
+                    id:
+                      type: string
+                    rawId:
+                      type: string
+                    response:
+                      type: object
+                    type:
+                      type: string
+              required:
+                - transfer_id
+                - webauthn_response
+      responses:
+        '200':
+          description: Transfer confirmed and completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Transfer confirmed and completed"
+                  transfer_details:
+                    $ref: '#/components/schemas/TransferDetails'
+        '400':
+          description: Invalid confirmation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "invalid_webauthn_response"
+                  message:
+                    type: string
+                    example: "WebAuthn confirmation failed"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  schemas:
+    TransferDetails:
+      type: object
+      properties:
+        sender_balance_before:
+          type: number
+        sender_balance_after:
+          type: number
+        recipient_balance_before:
+          type: number
+        recipient_balance_after:
+          type: number
+        amount_transferred:
+          type: number
+        sender_transaction_id:
+          type: string
+        recipient_transaction_id:
+          type: string
+        confirmation_method:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: string
+                example: "unauthorized"
+              message:
+                type: string
+                example: "Valid authentication required"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT  /api/transfers/user:
+    post:
+      summary: Create a user-to-user transfer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                recipientId:
+                  type: string
+                  description: Target user ID for the transfer
+                amount:
+                  type: number
+                  format: float
+                  minimum: 0.01
+                  maximum: 10000.00
+                description:
+                  type: string
+                  maxLength: 255
+                  description: Transfer description
+                confirmationMethod:
+                  type: string
+                  enum: [webauthn, password]
+                  description: Method used to confirm the transfer
+                webauthnAssertion:
+                  type: object
+                  description: WebAuthn assertion data (if confirmationMethod is webauthn)
+                  properties:
+                    credentialId:
+                      type: string
+                    signature:
+                      type: string
+                    authenticatorData:
+                      type: string
+                    clientDataJSON:
+                      type: string
+              required:
+                - recipientId
+                - amount
+                - description
+                - confirmationMethod
+      responses:
+        '200':
+          description: Transfer completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  transaction:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      type:
+                        type: string
+                        enum: [transfer_out]
+                      amount:
+                        type: number
+                        format: float
+                      description:
+                        type: string
+                      recipientUsername:
+                        type: string
+                      timestamp:
+                        type: string
+                        format: date-time
+                      balanceAfter:
+                        type: number
+                        format: float
+                  newBalance:
+                    type: number
+                    format: float
+                required:
+                  - success
+                  - transaction
+                  - newBalance
+        '400':
+          description: Bad request (insufficient balance, invalid recipient, etc.)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Insufficient balance"
+        '401':
+          description: Unauthorized
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
