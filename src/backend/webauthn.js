@@ -20,6 +20,11 @@ const WEBAUTHN_CONFIG = {
       : 'http://localhost:3000',
 };
 
+// Helper function to convert buffer to base64url
+function bufferToBase64URLString(buffer) {
+  return Buffer.from(buffer).toString('base64url');
+}
+
 // In-memory storage for challenges (in production, use Redis or database)
 const challenges = new Map();
 
@@ -39,6 +44,10 @@ async function generateRegistrationChallenge(username) {
       userID: userId,
       userName: username,
       userDisplayName: username,
+      authenticatorSelection: {
+        userVerification: 'required',
+        residentKey: 'required',
+      },
     });
     console.log('generateRegistrationOptions completed');
 
@@ -69,13 +78,22 @@ async function generateRegistrationChallenge(username) {
 // Verify registration response
 async function verifyRegistrationCredential(credential, challenge) {
   try {
+    console.log('Verifying registration for challenge:', challenge);
+    
     // Get stored challenge data
     const challengeData = challenges.get(challenge);
+    console.log('Challenge data found:', !!challengeData);
+    if (challengeData) {
+      console.log('Challenge data:', challengeData);
+    }
+    
     if (!challengeData || challengeData.type !== 'registration') {
+      console.log('Invalid challenge');
       return { success: false, error: 'Invalid or expired challenge' };
     }
 
     // Verify the credential
+    console.log('Calling verifyRegistrationResponse');
     const verification = await verifyRegistrationResponse({
       response: credential,
       expectedChallenge: challenge,
@@ -83,24 +101,50 @@ async function verifyRegistrationCredential(credential, challenge) {
       expectedRPID: WEBAUTHN_CONFIG.rpID,
       requireUserVerification: true,
     });
+    console.log('Verification result:', verification);
 
     if (!verification.verified) {
+      console.log('Verification failed');
       return { success: false, error: 'Credential verification failed' };
+    }
+
+    // Check if registrationInfo exists
+    if (!verification.registrationInfo) {
+      console.log('Registration info missing');
+      return { success: false, error: 'Registration info missing' };
     }
 
     // Remove used challenge
     challenges.delete(challenge);
 
+    console.log('Returning success');
+    // Convert public key to base64url
+    const publicKeyBuffer = verification.registrationInfo.credential.publicKey;
+    console.log('Public key buffer:', publicKeyBuffer);
+    let credentialPublicKey;
+    try {
+      if (Array.isArray(publicKeyBuffer)) {
+        credentialPublicKey = bufferToBase64URLString(publicKeyBuffer[0]);
+      } else {
+        credentialPublicKey = bufferToBase64URLString(publicKeyBuffer);
+      }
+      console.log('Credential public key:', credentialPublicKey);
+    } catch (error) {
+      console.log('Error converting public key:', error);
+      return { success: false, error: 'Failed to process credential public key' };
+    }
+    
     return {
       success: true,
       verified: verification.verified,
       registrationInfo: verification.registrationInfo,
       userID: challengeData.userID,
       username: challengeData.username,
-      credentialId: verification.registrationInfo.credentialID,
-      credentialPublicKey: verification.registrationInfo.credentialPublicKey,
+      credentialId: verification.registrationInfo.credential.id,
+      credentialPublicKey: credentialPublicKey,
     };
   } catch (error) {
+    console.log('Exception in verifyRegistrationCredential:', error);
     return { success: false, error: error.message };
   }
 }
