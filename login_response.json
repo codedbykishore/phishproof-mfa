@@ -1,1 +1,0 @@
-{"success":true,"userId":"4PG-EIS4lWqzx8rUQyXS_g","username":"kishore","requiresWebAuthn":true,"rpId":"localhost","challenge":"WUKpmOtiF0zpGtMPxbdTF933BUxmnJ3CriBysS58alc","allowCredentials":[{"type":"public-key","id":"Wk18HFr-MyVHNqMK0XBjEQ"}],"timeout":60000,"userVerification":"required"}
