@@ -65,32 +65,32 @@
 - [x] T017 [P] Create AuditEvent database model and queries in src/backend/database.js
 - [x] T018 [P] Implement WebAuthn server utilities in src/backend/webauthn.js
 - [x] T019 [P] Implement JWT authentication middleware in src/backend/auth.js
-- [ ] T020 Implement WebAuthn registration challenge endpoint in src/backend/routes.js
-- [ ] T021 Implement WebAuthn registration verify endpoint in src/backend/routes.js
-- [ ] T022 Implement WebAuthn authentication challenge endpoint in src/backend/routes.js
-- [ ] T023 Implement WebAuthn authentication verify endpoint in src/backend/routes.js
-- [ ] T024 Implement dashboard data endpoint in src/backend/routes.js
-- [ ] T025 Implement transfer creation endpoint in src/backend/routes.js
-- [ ] T026 Implement audit events endpoint in src/backend/routes.js
+- [x] T020 Implement WebAuthn registration challenge endpoint in src/backend/routes.js
+- [x] T021 Implement WebAuthn registration verify endpoint in src/backend/routes.js
+- [x] T022 Implement WebAuthn authentication challenge endpoint in src/backend/routes.js
+- [x] T023 Implement WebAuthn authentication verify endpoint in src/backend/routes.js
+- [x] T024 Implement dashboard data endpoint in src/backend/routes.js
+- [x] T025 Implement transfer creation endpoint in src/backend/routes.js
+- [x] T026 Implement audit events endpoint in src/backend/routes.js
 
 ## Phase 3.4: Frontend Implementation
-- [ ] T027 [P] Create main HTML structure with tabs in src/frontend/index.html
-- [ ] T028 [P] Implement CSS styles for banking UI in src/frontend/css/styles.css
-- [ ] T029 [P] Create WebAuthn client utilities in src/frontend/js/webauthn.js
-- [ ] T030 [P] Create API client functions in src/frontend/js/api.js
-- [ ] T031 Implement main application logic and state management in src/frontend/js/app.js
-- [ ] T032 Implement registration tab UI and interactions in src/frontend/js/app.js
-- [ ] T033 Implement login tab UI and interactions in src/frontend/js/app.js
-- [ ] T034 Implement dashboard tab UI and data display in src/frontend/js/app.js
-- [ ] T035 Implement transactions tab UI and transfer form in src/frontend/js/app.js
-- [ ] T036 Implement audit/logs tab UI and event display in src/frontend/js/app.js
+- [x] T027 [P] Create main HTML structure with tabs in src/frontend/index.html
+- [x] T028 [P] Implement CSS styles for banking UI in src/frontend/css/styles.css
+- [x] T029 [P] Create WebAuthn client utilities in src/frontend/js/webauthn.js
+- [x] T030 [P] Create API client functions in src/frontend/js/api.js
+- [x] T031 Implement main application logic and state management in src/frontend/js/app.js
+- [x] T032 Implement registration tab UI and interactions in src/frontend/js/app.js
+- [x] T033 Implement login tab UI and interactions in src/frontend/js/app.js
+- [x] T034 Implement dashboard tab UI and data display in src/frontend/js/app.js
+- [x] T035 Implement transactions tab UI and transfer form in src/frontend/js/app.js
+- [x] T036 Implement audit/logs tab UI and event display in src/frontend/js/app.js
 
 ## Phase 3.5: Integration & Security
-- [ ] T037 Initialize SQLite database with schema in src/backend/server.js
-- [ ] T038 Configure Express middleware (CORS, helmet, JSON parsing) in src/backend/server.js
-- [ ] T039 Implement audit event logging for all operations in src/backend/routes.js
-- [ ] T040 Implement session timeout handling (30 minutes) in src/backend/auth.js
-- [ ] T041 Implement audit event cleanup (24-hour retention) in src/backend/database.js
+- [x] T037 Initialize SQLite database with schema in src/backend/server.js
+- [x] T038 Configure Express middleware (CORS, helmet, JSON parsing) in src/backend/server.js
+- [x] T039 Implement audit event logging for all operations in src/backend/routes.js
+- [x] T040 Implement session timeout handling (30 minutes) in src/backend/auth.js
+- [x] T041 Implement audit event cleanup (24-hour retention) in src/backend/database.js
 
 ## Phase 3.6: Polish
 - [ ] T042 [P] Add unit tests for WebAuthn utilities in tests/unit/test-webauthn-utils.js
@@ -98,7 +98,7 @@
 - [ ] T044 [P] Add unit tests for authentication middleware in tests/unit/test-auth.js
 - [ ] T045 Performance test WebAuthn operations (<1 second) in tests/performance/test-webauthn-performance.js
 - [ ] T046 Performance test page load times (<3 seconds) in tests/performance/test-page-load.js
-- [ ] T047 [P] Create README.md with setup and demo instructions
+- [x] T047 [P] Create README.md with setup and demo instructions
 - [ ] T048 [P] Add JSDoc comments and code documentation
 - [ ] T049 Configure Vite build for production deployment
 - [ ] T050 Run quickstart.md validation scenarios manually
