@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import routes from './src/backend/routes.js';
+import { initializeDatabase } from './src/backend/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,6 +49,9 @@ app.use((err, req, res, next) => {
 
 // Start server
 if (import.meta.url === `file://${process.argv[1]}`) {
+  // Initialize database before starting server
+  initializeDatabase();
+  
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });

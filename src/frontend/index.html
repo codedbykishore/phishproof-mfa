@@ -19,6 +19,7 @@
             <button class="tab-button" data-tab="dashboard">Dashboard</button>
             <button class="tab-button" data-tab="transfers">Transfers</button>
             <button class="tab-button" data-tab="audit">Audit Log</button>
+            <button class="tab-button logout-btn" id="logout-btn" style="display: none;">Logout</button>
         </nav>
 
         <main class="main-content">
@@ -30,6 +31,16 @@
                         <label for="register-username">Username:</label>
                         <input type="text" id="register-username" required minlength="3" maxlength="50">
                     </div>
+                    <div class="form-group">
+                        <label for="register-password">Password:</label>
+                        <input type="password" id="register-password" required minlength="8">
+                        <small class="form-hint">Password must be at least 8 characters long</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-confirm-password">Confirm Password:</label>
+                        <input type="password" id="register-confirm-password" required minlength="8">
+                        <small class="form-hint">Please confirm your password</small>
+                    </div>
                     <button type="submit" class="btn btn-primary" id="register-btn">
                         Create Passkey & Register
                     </button>
@@ -39,14 +50,18 @@
 
             <!-- Login Tab -->
             <section id="login-tab" class="tab-content">
-                <h2>Sign In with Passkey</h2>
+                <h2>Sign In to Your Account</h2>
                 <form id="login-form" class="auth-form">
                     <div class="form-group">
                         <label for="login-username">Username:</label>
                         <input type="text" id="login-username" required>
                     </div>
+                    <div class="form-group">
+                        <label for="login-password">Password:</label>
+                        <input type="password" id="login-password" required>
+                    </div>
                     <button type="submit" class="btn btn-primary" id="login-btn">
-                        Authenticate with Passkey
+                        Sign In
                     </button>
                 </form>
                 <div id="login-status" class="status-message"></div>

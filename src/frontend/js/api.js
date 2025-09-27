@@ -50,10 +50,10 @@ async function apiRequest(endpoint, options = {}) {
  */
 
 // Get registration challenge
-export async function getRegistrationChallenge(username) {
+export async function getRegistrationChallenge(username, password) {
     return apiRequest('/webauthn/register/challenge', {
         method: 'POST',
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ username, password }),
     });
 }
 
@@ -70,10 +70,15 @@ export async function verifyRegistration(credential, challenge) {
  */
 
 // Get authentication challenge
-export async function getAuthenticationChallenge(userId) {
+export async function getAuthenticationChallenge(identifier) {
+    // identifier can be either username or userId
+    const body = typeof identifier === 'string' && identifier.includes('-') 
+        ? { userId: identifier }
+        : { username: identifier };
+    
     return apiRequest('/webauthn/auth/challenge', {
         method: 'POST',
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify(body),
     });
 }
 
@@ -82,6 +87,18 @@ export async function verifyAuthentication(credential, challenge) {
     return apiRequest('/webauthn/auth/verify', {
         method: 'POST',
         body: JSON.stringify({ credential, challenge }),
+    });
+}
+
+/**
+ * Password Authentication API
+ */
+
+// Login with password (first step of two-factor authentication)
+export async function loginWithPassword(username, password) {
+    return apiRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
     });
 }
 

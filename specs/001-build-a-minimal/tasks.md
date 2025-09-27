@@ -1,6 +1,25 @@
 # Tasks: Build a Minimal Banking Prototype with Phishing-Resistant MFA
 
-**Input**: Design documents from `/specs/001-build-a-minimal/`
+**Input**: Design docu## Phase 3.6: Polish & Testing
+- [x] T042 [P] Add unit tests for WebAuthn utilities in tests/unit/test-webauthn-utils.js
+- [x] T043 [P] Add unit tests for database operations in tests/unit/test-database.js
+- [x] T044 [P] Add unit tests for authentication middleware in tests/unit/test-auth.js
+- [x] T045 Performance test WebAuthn operations (<1 second) in tests/performance/test-webauthn-performance.js
+- [x] T046 Performance test page load times (<3 seconds) in tests/performance/test-page-load.js
+- [x] T047 [P] Create README.md with setup and demo instructions
+- [x] T048 [P] Add JSDoc comments and code documentation
+- [x] T049 Configure Vite build for production deployment
+- [x] T050 Run quickstart.md validation scenarios manually
+- [x] T051 Update registration flow to redirect to login page after successful registration
+- [x] T052 Add password field to user registration and login forms
+- [x] T053 Implement password hashing and verification in backend
+- [x] T054 Update authentication flow to require password + WebAuthn (two-factor)
+- [x] T055 Update database schema to include password field for users
+- [x] T056 Modify frontend to handle two-step authentication process
+- [x] T057 Update API endpoints to support password-based authentication
+- [x] T058 Add password validation and security requirements
+- [x] T059 Update audit logging to track password authentication events
+- [x] T060 Test complete user journey: register → login (password + WebAuthn) → dashboard → transfer → audit `/specs/001-build-a-minimal/`
 **Prerequisites**: plan.md (required), research.md, data-model.md, contracts/
 
 ## Execution Flow (main)

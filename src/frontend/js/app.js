@@ -9,6 +9,7 @@ import {
     verifyRegistration,
     getAuthenticationChallenge,
     verifyAuthentication,
+    loginWithPassword,
     getDashboard,
     createTransfer,
     getAuditEvents,
@@ -41,6 +42,7 @@ function init() {
 
     // Check if user is already authenticated
     if (isAuthenticated()) {
+        elements.logoutBtn.style.display = 'inline-block';
         switchToTab('dashboard');
         loadDashboard();
     } else {
@@ -61,13 +63,16 @@ function cacheElements() {
 
         // Registration
         registerForm: document.getElementById('register-form'),
-        registerUsername: document.getElementById('register-username'),
-        registerBtn: document.getElementById('register-btn'),
+    registerBtn: document.getElementById('register-btn'),
+    registerUsername: document.getElementById('register-username'),
+    registerPassword: document.getElementById('register-password'),
+    registerConfirmPassword: document.getElementById('register-confirm-password'),
         registerStatus: document.getElementById('register-status'),
 
         // Login
         loginForm: document.getElementById('login-form'),
         loginUsername: document.getElementById('login-username'),
+        loginPassword: document.getElementById('login-password'),
         loginBtn: document.getElementById('login-btn'),
         loginStatus: document.getElementById('login-status'),
 
@@ -91,6 +96,9 @@ function cacheElements() {
         auditList: document.getElementById('audit-list'),
         refreshAuditBtn: document.getElementById('refresh-audit-btn'),
         auditStatus: document.getElementById('audit-status'),
+
+        // Logout
+        logoutBtn: document.getElementById('logout-btn'),
     };
 }
 
@@ -117,6 +125,9 @@ function setupEventListeners() {
 
     // Audit refresh button
     elements.refreshAuditBtn.addEventListener('click', loadAuditLog);
+
+    // Logout button
+    elements.logoutBtn.addEventListener('click', logout);
 }
 
 /**
@@ -191,9 +202,22 @@ async function handleRegistration(event) {
     event.preventDefault();
 
     const username = elements.registerUsername.value.trim();
+    const password = elements.registerPassword.value;
+    const confirmPassword = elements.registerConfirmPassword.value;
 
-    if (!username) {
-        showStatus('register-status', 'Please enter a username.', 'error');
+    // Validation
+    if (!username || username.length < 3) {
+        showStatus('register-status', 'Username must be at least 3 characters long.', 'error');
+        return;
+    }
+
+    if (!password || password.length < 8) {
+        showStatus('register-status', 'Password must be at least 8 characters long.', 'error');
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        showStatus('register-status', 'Passwords do not match.', 'error');
         return;
     }
 
@@ -202,7 +226,7 @@ async function handleRegistration(event) {
 
         // Step 1: Get registration challenge from server
         showStatus('register-status', 'Getting registration challenge...', 'info');
-        const challengeResponse = await getRegistrationChallenge(username);
+        const challengeResponse = await getRegistrationChallenge(username, password);
 
         if (!challengeResponse.success) {
             throw new Error(challengeResponse.error || 'Failed to get registration challenge');
@@ -231,17 +255,11 @@ async function handleRegistration(event) {
         }
 
         // Success!
-        showStatus('register-status', `Registration successful! Welcome, ${username}!`, 'success');
+        showStatus('register-status', `Registration successful! Please log in with your credentials.`, 'success');
 
-        // Store auth token
-        if (verificationResponse.token) {
-            setAuthToken(verificationResponse.token);
-            currentUser = verificationResponse.user;
-        }
-
-        // Clear form and switch to dashboard
+        // Clear form and switch to login page
         elements.registerForm.reset();
-        switchToTab('dashboard');
+        switchToTab('login');
 
     } catch (error) {
         console.error('Registration failed:', error);
@@ -258,32 +276,44 @@ async function handleLogin(event) {
     event.preventDefault();
 
     const username = elements.loginUsername.value.trim();
+    const password = elements.loginPassword.value;
 
     if (!username) {
         showStatus('login-status', 'Please enter your username.', 'error');
         return;
     }
 
+    if (!password) {
+        showStatus('login-status', 'Please enter your password.', 'error');
+        return;
+    }
+
     try {
         setLoading(elements.loginBtn, true);
 
-        // For login, we need to get the user ID first
-        // In a real app, this would be a separate endpoint, but for demo we'll use the username
-        showStatus('login-status', 'Getting authentication challenge...', 'info');
+        // Step 1: Verify password with server (this also returns WebAuthn challenge)
+        showStatus('login-status', 'Verifying password...', 'info');
+        const passwordResponse = await loginWithPassword(username, password);
 
-        // This is a simplified flow - in reality, you'd look up the user first
-        const challengeResponse = await getAuthenticationChallenge(username);
-
-        if (!challengeResponse.success) {
-            throw new Error(challengeResponse.error || 'Failed to get authentication challenge');
+        if (!passwordResponse.success) {
+            throw new Error(passwordResponse.error || 'Password verification failed');
         }
 
-        currentChallenge = challengeResponse.challenge;
+        // The password response already includes the WebAuthn challenge options
+        currentChallenge = passwordResponse.challenge;
 
-        // Step 2: Authenticate with passkey
+        // Extract WebAuthn options from the password response
+        const webauthnOptions = {
+            challenge: passwordResponse.challenge,
+            allowCredentials: passwordResponse.allowCredentials,
+            rpId: passwordResponse.rpId,
+            timeout: passwordResponse.timeout,
+            userVerification: passwordResponse.userVerification,
+        };
+
+        // Step 2: Authenticate with passkey using the extracted options
         showStatus('login-status', 'Authenticating with your passkey... Please interact with your authenticator.', 'info');
-        const { success: authSuccess, ...authOptions } = challengeResponse;
-        const authResult = await authenticatePasskey(authOptions);
+        const authResult = await authenticatePasskey(webauthnOptions);
 
         if (!authResult.success) {
             throw new Error(authResult.error || 'Passkey authentication failed');
@@ -291,6 +321,10 @@ async function handleLogin(event) {
 
         // Step 3: Verify authentication with server
         showStatus('login-status', 'Verifying authentication...', 'info');
+        console.log('About to verify authentication with:', {
+            credential: authResult.credential,
+            challenge: currentChallenge
+        });
         const verificationResponse = await verifyAuthentication(
             authResult.credential,
             currentChallenge
@@ -306,6 +340,9 @@ async function handleLogin(event) {
         // Store auth token and user info
         setAuthToken(verificationResponse.token);
         currentUser = verificationResponse.user;
+
+        // Show logout button
+        elements.logoutBtn.style.display = 'inline-block';
 
         // Clear form and switch to dashboard
         elements.loginForm.reset();
@@ -473,7 +510,7 @@ function updateAuditList(events) {
         <div class="audit-item">
             <div class="audit-event-type">${event.eventType || 'Unknown Event'}</div>
             <div class="audit-timestamp">${new Date(event.timestamp).toLocaleString()}</div>
-            <div class="audit-details">${JSON.stringify(event.details || {}, null, 2)}</div>
+            <div class="audit-details">${JSON.stringify(event.event_data || event.details || {}, null, 2)}</div>
         </div>
     `).join('');
 
@@ -535,6 +572,7 @@ function logout() {
     clearAuthToken();
     currentUser = null;
     currentChallenge = null;
+    elements.logoutBtn.style.display = 'none';
     switchToTab('register');
     showStatus('register-status', 'You have been logged out.', 'info');
 }

@@ -12,9 +12,12 @@ import {
   createTransaction,
   getUserTransactions,
   getUserBalance,
+  updateUserBalance,
   createAuditEvent,
   getUserAuditEvents,
   updateUserLastLogin,
+  hashPassword,
+  verifyPassword,
 } from './database.js';
 import { generateToken, authenticateToken } from './auth.js';
 
@@ -27,7 +30,7 @@ console.log('Routes module loaded');
 router.post('/webauthn/register/challenge', async (req, res) => {
   try {
     console.log('Registration challenge endpoint called');
-    const { username } = req.body;
+    const { username, password } = req.body;
 
     // Validate input
     if (!username || typeof username !== 'string' || username.trim().length === 0) {
@@ -35,6 +38,13 @@ router.post('/webauthn/register/challenge', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Valid username is required',
+      });
+    }
+
+    if (!password || typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password must be at least 8 characters long',
       });
     }
 
@@ -50,7 +60,7 @@ router.post('/webauthn/register/challenge', async (req, res) => {
 
     console.log('Generating registration challenge for:', username.trim());
     // Generate registration challenge
-    const challengeResult = await generateRegistrationChallenge(username.trim());
+    const challengeResult = await generateRegistrationChallenge(username.trim(), password);
 
     if (!challengeResult.success) {
       console.log('Challenge generation failed:', challengeResult.error);
@@ -118,10 +128,20 @@ router.post('/webauthn/register/verify', async (req, res) => {
       });
     }
 
+    // Hash the password
+    const passwordHashResult = await hashPassword(verificationResult.password);
+    if (!passwordHashResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to process password',
+      });
+    }
+
     // Create the user account
     const userResult = createUser(
       verificationResult.userID,
       verificationResult.username,
+      passwordHashResult.hash,
       verificationResult.credentialId,
       verificationResult.credentialPublicKey
     );
@@ -144,10 +164,101 @@ router.post('/webauthn/register/verify', async (req, res) => {
     res.json({
       success: true,
       userId: verificationResult.userID,
-      message: 'Registration successful',
+      message: 'Registration successful. Please log in.',
+      redirectTo: 'login',
     });
   } catch (error) {
     console.error('Registration verify error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// Password Login Endpoint
+// POST /api/auth/login
+router.post('/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Validate input
+    if (!username || typeof username !== 'string' || username.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid username is required',
+      });
+    }
+
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Password is required',
+      });
+    }
+
+    // Find user by username
+    const userResult = findUserByUsername(username.trim());
+    if (!userResult.success) {
+      // Log failed login attempt
+      createAuditEvent(null, 'login_failure', {
+        username: username.trim(),
+        reason: 'user_not_found',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      });
+
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid username or password',
+      });
+    }
+
+    const user = userResult.user;
+
+    // Verify password
+    const passwordResult = await verifyPassword(password, user.password_hash);
+    if (!passwordResult.success || !passwordResult.isValid) {
+      // Log failed login attempt
+      createAuditEvent(user.id, 'login_failure', {
+        username: username.trim(),
+        reason: 'invalid_password',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      });
+
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid username or password',
+      });
+    }
+
+    // Password verified, now generate WebAuthn challenge
+    const challengeResult = await generateAuthenticationChallenge(user.id);
+
+    if (!challengeResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to generate authentication challenge',
+      });
+    }
+
+    // Log password verification success
+    createAuditEvent(user.id, 'password_verified', {
+      username: username.trim(),
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
+
+    res.json({
+      success: true,
+      userId: user.id,
+      username: user.username,
+      requiresWebAuthn: true,
+      ...challengeResult.options,
+    });
+  } catch (error) {
+    console.error('Password login error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
@@ -159,27 +270,57 @@ router.post('/webauthn/register/verify', async (req, res) => {
 // POST /api/webauthn/auth/challenge
 router.post('/webauthn/auth/challenge', async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId, username } = req.body;
 
-    // Validate input
-    if (!userId || typeof userId !== 'string' || userId.trim().length === 0) {
+    // Validate input - accept either userId or username
+    if ((!userId && !username) || (userId && username)) {
       return res.status(400).json({
         success: false,
-        error: 'Valid userId is required',
+        error: 'Either userId or username is required (not both)',
       });
     }
 
-    // Find the user
-    const userResult = findUserById(userId.trim());
-    if (!userResult.success) {
-      return res.status(404).json({
-        success: false,
-        error: 'User not found',
-      });
+    let targetUserId = userId;
+    let userLookup;
+
+    // If username provided, look up the user
+    if (username) {
+      if (typeof username !== 'string' || username.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Valid username is required',
+        });
+      }
+
+      userLookup = findUserByUsername(username.trim());
+      if (!userLookup.success) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found',
+        });
+      }
+      targetUserId = userLookup.user.id;
+    } else {
+      // If userId provided directly
+      if (typeof userId !== 'string' || userId.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Valid userId is required',
+        });
+      }
+
+      userLookup = findUserById(userId.trim());
+      if (!userLookup.success) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found',
+        });
+      }
+      targetUserId = userId.trim();
     }
 
     // Generate authentication challenge
-    const challengeResult = await generateAuthenticationChallenge(userId.trim());
+    const challengeResult = await generateAuthenticationChallenge(targetUserId);
 
     if (!challengeResult.success) {
       return res.status(500).json({
@@ -189,13 +330,15 @@ router.post('/webauthn/auth/challenge', async (req, res) => {
     }
 
     // Log audit event
-    createAuditEvent(userId.trim(), 'authentication_challenge', {
+    createAuditEvent(targetUserId, 'authentication_challenge', {
+      username: userLookup.user.username,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent'),
     });
 
     res.json({
       success: true,
+      userId: targetUserId,
       ...challengeResult.options,
     });
   } catch (error) {
@@ -211,10 +354,15 @@ router.post('/webauthn/auth/challenge', async (req, res) => {
 // POST /api/webauthn/auth/verify
 router.post('/webauthn/auth/verify', async (req, res) => {
   try {
+    console.log('WebAuthn auth verify endpoint called');
     const { credential, challenge } = req.body;
+    
+    console.log('Received credential:', JSON.stringify(credential, null, 2));
+    console.log('Received challenge:', challenge);
 
     // Validate input
     if (!credential || typeof credential !== 'object') {
+      console.log('Invalid credential object');
       return res.status(400).json({
         success: false,
         error: 'Valid credential object is required',
@@ -222,6 +370,7 @@ router.post('/webauthn/auth/verify', async (req, res) => {
     }
 
     if (!challenge || typeof challenge !== 'string') {
+      console.log('Invalid challenge');
       return res.status(400).json({
         success: false,
         error: 'Challenge is required',
@@ -249,7 +398,15 @@ router.post('/webauthn/auth/verify', async (req, res) => {
     updateUserLastLogin(verificationResult.userId);
 
     // Generate JWT token
-    const tokenResult = generateToken(verificationResult.userId);
+    const tokenUserResult = findUserById(verificationResult.userId);
+    if (!tokenUserResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve user details',
+      });
+    }
+
+    const tokenResult = generateToken(verificationResult.userId, tokenUserResult.user.username);
 
     if (!tokenResult.success) {
       return res.status(500).json({
@@ -273,6 +430,13 @@ router.post('/webauthn/auth/verify', async (req, res) => {
       userAgent: req.get('User-Agent'),
     });
 
+    // Log successful login (both password and WebAuthn verified)
+    createAuditEvent(verificationResult.userId, 'login_success', {
+      username: userResult.user.username,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    });
+
     res.json({
       success: true,
       token: tokenResult.token,
@@ -281,7 +445,7 @@ router.post('/webauthn/auth/verify', async (req, res) => {
         username: userResult.user.username,
         balance: userResult.user.balance,
       },
-      expiresAt: tokenResult.expiresAt,
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes from now
     });
   } catch (error) {
     console.error('Authentication verify error:', error);
@@ -373,8 +537,11 @@ router.post('/transfers', authenticateToken, async (req, res) => {
       });
     }
 
+    // Calculate new balance
+    const newBalance = balanceResult.balance - amount;
+
     // Create the transaction
-    const transactionResult = createTransaction(userId, 'debit', amount, description.trim());
+    const transactionResult = createTransaction(userId, 'debit', amount, description.trim(), newBalance);
     if (!transactionResult.success) {
       return res.status(500).json({
         success: false,
@@ -382,28 +549,39 @@ router.post('/transfers', authenticateToken, async (req, res) => {
       });
     }
 
-    // Get updated balance
-    const newBalanceResult = getUserBalance(userId);
-    if (!newBalanceResult.success) {
+    // Update user's balance in the database
+    const updateBalanceResult = updateUserBalance(userId, newBalance);
+    if (!updateBalanceResult.success) {
       return res.status(500).json({
         success: false,
-        error: 'Failed to get updated balance',
+        error: 'Failed to update balance',
       });
     }
+
+    // Get the created transaction details
+    const transactionDetails = {
+      id: transactionResult.transactionId,
+      user_id: userId,
+      type: 'debit',
+      amount: amount,
+      description: description.trim(),
+      timestamp: new Date().toISOString(),
+      balance_after: newBalance,
+    };
 
     // Log audit event
     createAuditEvent(userId, 'transfer', {
       amount: amount,
       description: description.trim(),
-      transactionId: transactionResult.transaction.id,
+      transactionId: transactionResult.transactionId,
       balanceBefore: balanceResult.balance,
-      balanceAfter: newBalanceResult.balance,
+      balanceAfter: newBalance,
     });
 
     res.json({
       success: true,
-      transaction: transactionResult.transaction,
-      newBalance: newBalanceResult.balance,
+      transaction: transactionDetails,
+      newBalance: newBalance,
     });
   } catch (error) {
     console.error('Transfer error:', error);

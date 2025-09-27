@@ -5,6 +5,21 @@ A minimal banking prototype demonstrating phishing-resistant authentication usin
 ## 🚀 Features
 
 - **Phishing-Resistant Authentication**: WebAuthn/Passkey-based registration and login
+- **True Multi-Factor Authentication (MFA)**: WebAuthn provides three factors:
+  - **Something you have** - Authenticator device/hardware
+  - **Something you are** - Biometric (fingerprint, face) or PIN
+  - **Something you know** - Credential possession (implicit)
+- **Secure Banking Dashboard**: View account balance and transaction history
+- **Transfer Operations**: Perform secure money transfers with balance validation
+- **Audit Logging**: Complete security event tracking with timestamps
+- **Single-Page Application**: Modern SPA with tab-based navigation
+- **JWT Authentication**: Secure session management with 30-minute timeouts MFA Banking
+
+A minimal banking prototype demonstrating phishing-resistant authentication using WebAuthn (Passkeys). This application showcases how modern web standards can provide secure, passwordless authentication that resists phishing attacks.
+
+## 🚀 Features
+
+- **Phishing-Resistant Authentication**: WebAuthn/Passkey-based registration and login
 - **Secure Banking Dashboard**: View account balance and transaction history
 - **Transfer Operations**: Perform secure money transfers
 - **Audit Logging**: Complete security event tracking
