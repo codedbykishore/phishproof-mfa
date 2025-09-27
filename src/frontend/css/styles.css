@@ -194,6 +194,40 @@ body {
     border-color: var(--error-color);
 }
 
+/* Transfer Sections */
+.transfer-section {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow);
+}
+
+.transfer-section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.security-note {
+    color: var(--warning-color) !important;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+/* Form hints */
+.form-hint {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
 /* Buttons */
 .btn {
     display: inline-flex;
@@ -282,6 +316,11 @@ body {
     font-weight: 700;
     margin-bottom: 0.5rem;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    color: white !important; /* Ensure welcome message is white */
+}
+
+#welcome-message {
+    color: white !important;
 }
 
 .welcome-subtitle {
@@ -311,6 +350,14 @@ body {
 
 .user-info p {
     margin-bottom: 0.5rem;
+}
+
+/* Balance styling */
+.balance-amount {
+    color: var(--success-color) !important;
+    font-size: 1.3rem;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .user-info p:last-child {

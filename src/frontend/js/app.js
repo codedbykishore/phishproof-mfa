@@ -11,7 +11,7 @@ import {
     verifyAuthentication,
     loginWithPassword,
     getDashboard,
-    createTransfer,
+    createUserTransfer,
     getAuditEvents,
     setAuthToken,
     getAuthToken,
@@ -92,12 +92,13 @@ function cacheElements() {
         transactionsList: document.getElementById('transactions-list'),
         dashboardStatus: document.getElementById('dashboard-status'),
 
-        // Transfers
-        transferForm: document.getElementById('transfer-form'),
-        transferAmount: document.getElementById('transfer-amount'),
-        transferDescription: document.getElementById('transfer-description'),
-        transferBtn: document.getElementById('transfer-btn'),
-        transferStatus: document.getElementById('transfer-status'),
+        // User-to-User Transfers
+        userTransferForm: document.getElementById('user-transfer-form'),
+        recipientUsername: document.getElementById('recipient-username'),
+        userTransferAmount: document.getElementById('user-transfer-amount'),
+        userTransferDescription: document.getElementById('user-transfer-description'),
+        userTransferBtn: document.getElementById('user-transfer-btn'),
+        userTransferStatus: document.getElementById('user-transfer-status'),
 
         // Audit
         auditContent: document.getElementById('audit-content'),
@@ -134,8 +135,8 @@ function setupEventListeners() {
     // Login form
     elements.loginForm.addEventListener('submit', handleLogin);
 
-    // Transfer form
-    elements.transferForm.addEventListener('submit', handleTransfer);
+    // User-to-user transfer form
+    elements.userTransferForm.addEventListener('submit', handleUserTransfer);
 
     // Audit refresh button
     elements.refreshAuditBtn.addEventListener('click', loadAuditLog);
@@ -222,7 +223,7 @@ function switchToTab(tabName) {
             break;
         case 'transfers':
             if (!isAuthenticated()) {
-                showStatus('transfer-status', 'Please log in to make transfers.', 'info');
+                showStatus('user-transfer-status', 'Please log in to send money to other users.', 'info');
             }
             break;
         case 'audit':
@@ -449,16 +450,17 @@ async function loadDashboard() {
         }
         
         if (elements.welcomeSubtitle) {
-            elements.welcomeSubtitle.textContent = `Your secure banking dashboard • Last login: ${
-                currentUser.lastLogin ? new Date(currentUser.lastLogin).toLocaleString() : 'First time'
-            }`;
+            const lastLoginIST = currentUser.lastLogin 
+                ? new Date(new Date(currentUser.lastLogin).getTime() + (330 * 60 * 1000)).toLocaleString('en-IN').replace(/,/, '') + ' IST'
+                : 'First time';
+            elements.welcomeSubtitle.textContent = `Your secure banking dashboard • Last login: ${lastLoginIST}`;
         }
         
         elements.userUsername.textContent = currentUser.username || '-';
-        elements.userBalance.textContent = (currentUser.balance || 0).toFixed(2);
+        elements.userBalance.textContent = `₹${(currentUser.balance || 0).toFixed(2)}`;
         elements.userLastLogin.textContent = currentUser.lastLogin
-            ? new Date(currentUser.lastLogin).toLocaleString()
-            : '-';
+            ? new Date(new Date(currentUser.lastLogin).getTime() + (330 * 60 * 1000)).toLocaleString('en-IN').replace(/,/, '') + ' IST'
+            : 'First time';
 
         // Update transactions
         updateTransactionsList(response.recentTransactions || []);
@@ -486,10 +488,10 @@ function updateTransactionsList(transactions) {
         <div class="transaction-item">
             <div class="transaction-info">
                 <div class="transaction-amount ${transaction.type}">
-                    ${transaction.type === 'debit' ? '-' : '+'}$${Math.abs(transaction.amount).toFixed(2)}
+                    ${transaction.type === 'debit' ? '-' : '+'}₹${Math.abs(transaction.amount).toFixed(2)}
                 </div>
                 <div class="transaction-description">${transaction.description || 'No description'}</div>
-                <div class="transaction-timestamp">${new Date(transaction.timestamp).toLocaleString()}</div>
+                <div class="transaction-timestamp">${new Date(new Date(transaction.timestamp).getTime() + (330 * 60 * 1000)).toLocaleString('en-IN').replace(/,/, '') + ' IST'}</div>
             </div>
         </div>
     `).join('');
@@ -498,53 +500,62 @@ function updateTransactionsList(transactions) {
 }
 
 /**
- * Handle transfer creation
+ * Handle user-to-user transfer
  */
-async function handleTransfer(event) {
+async function handleUserTransfer(event) {
     event.preventDefault();
 
     if (!isAuthenticated()) {
-        showStatus('transfer-status', 'Please log in to make transfers.', 'info');
+        showStatus('user-transfer-status', 'Please log in to send money to other users.', 'info');
         return;
     }
 
-    const amount = parseFloat(elements.transferAmount.value);
-    const description = elements.transferDescription.value.trim();
+    const recipientUsername = elements.recipientUsername.value.trim();
+    const amount = parseFloat(elements.userTransferAmount.value);
+    const description = elements.userTransferDescription.value.trim();
+
+    if (!recipientUsername) {
+        showStatus('user-transfer-status', 'Please enter the recipient username.', 'error');
+        return;
+    }
 
     if (!amount || amount <= 0) {
-        showStatus('transfer-status', 'Please enter a valid amount greater than $0.00.', 'error');
+        showStatus('user-transfer-status', 'Please enter a valid amount greater than ₹0.00.', 'error');
         return;
     }
 
     if (!description) {
-        showStatus('transfer-status', 'Please enter a description for the transfer.', 'error');
+        showStatus('user-transfer-status', 'Please enter a description for the transfer.', 'error');
         return;
     }
 
     try {
-        setLoading(elements.transferBtn, true);
+        setLoading(elements.userTransferBtn, true);
 
-        showStatus('transfer-status', 'Processing transfer...', 'info');
-        const response = await createTransfer(amount, description);
+        showStatus('user-transfer-status', 'Processing transfer...', 'info');
+        const response = await createUserTransfer(recipientUsername, amount, description);
 
         if (!response.success) {
-            throw new Error(response.error || 'Transfer failed');
+            throw new Error(response.error || 'User transfer failed');
         }
 
         // Success!
-        showStatus('transfer-status', `Transfer of $${amount.toFixed(2)} completed successfully!`, 'success');
+        showStatus('user-transfer-status', 
+            `Successfully sent ₹${amount.toFixed(2)} to ${recipientUsername}!`, 
+            'success'
+        );
 
         // Clear form
-        elements.transferForm.reset();
+        elements.userTransferForm.reset();
 
         // Refresh dashboard to show updated balance and transaction
         loadDashboard();
 
     } catch (error) {
-        console.error('Transfer failed:', error);
-        showStatus('transfer-status', formatApiError(error), 'error');
+        console.error('User transfer failed:', error);
+        showStatus('user-transfer-status', formatApiError(error), 'error');
     } finally {
-        setLoading(elements.transferBtn, false);
+        setLoading(elements.userTransferBtn, false);
     }
 }
 
@@ -585,13 +596,48 @@ function updateAuditList(events) {
         return;
     }
 
-    const html = events.map(event => `
+    // Helper function to format event types for display
+    function formatEventType(eventType) {
+        if (!eventType) return 'Unknown Event';
+        
+        const eventTypeMap = {
+            'registration_challenge': 'Registration Challenge',
+            'registration': 'Registration Complete',
+            'login_failure': 'Login Failed',
+            'authentication_challenge': 'Authentication Challenge',
+            'authentication_success': 'Authentication Success',
+            'login_success': 'Login Success',
+            'login': 'Login Complete',
+            'password_verified': 'Password Verified',
+            'transaction': 'Transaction',
+            'logout': 'Logout',
+            'session_expired': 'Session Expired'
+        };
+        
+        const result = eventTypeMap[eventType] || eventType.split('_').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+        return result;
+    }
+
+    // Helper function to convert timestamp to IST
+    function toISTString(timestamp) {
+        const date = new Date(timestamp);
+        // Add 5 hours 30 minutes (330 minutes) for IST
+        const istDate = new Date(date.getTime() + (330 * 60 * 1000));
+        return istDate.toLocaleString('en-IN').replace(/,/, '') + ' IST';
+    }
+
+    const html = events.map(event => {
+        const istTime = toISTString(event.timestamp);
+        return `
         <div class="audit-item">
-            <div class="audit-event-type">${event.eventType || 'Unknown Event'}</div>
-            <div class="audit-timestamp">${new Date(event.timestamp).toLocaleString()}</div>
+            <div class="audit-event-type">${formatEventType(event.event_type || event.eventType)}</div>
+            <div class="audit-timestamp">${istTime}</div>
             <div class="audit-details">${JSON.stringify(event.event_data || event.details || {}, null, 2)}</div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 
     container.innerHTML = html;
 }
@@ -667,6 +713,10 @@ function showLogoutModal() {
  */
 function hideLogoutModal() {
     elements.logoutModal.classList.remove('show');
+    // Redirect back to dashboard after canceling logout
+    if (isAuthenticated()) {
+        switchToTab('dashboard');
+    }
 }
 
 /**

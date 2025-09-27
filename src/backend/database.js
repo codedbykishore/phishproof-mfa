@@ -288,9 +288,12 @@ function updateUserBalance(id, newBalance) {
 
 function updateUserLastLogin(id) {
   try {
+    console.log('🕐 Updating last login for user:', id);
     const result = userQueries.updateLastLogin.run(id);
+    console.log('🕐 Last login update result:', { success: result.changes > 0, changes: result.changes });
     return { success: result.changes > 0, changes: result.changes };
   } catch (error) {
+    console.error('🕐 Last login update error:', error);
     return { success: false, error: error.message };
   }
 }

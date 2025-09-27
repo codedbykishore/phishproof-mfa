@@ -123,6 +123,14 @@ export async function createTransfer(amount, description) {
     });
 }
 
+// Create a user-to-user transfer
+export async function createUserTransfer(recipientUsername, amount, description) {
+    return apiRequest('/transfers/user', {
+        method: 'POST',
+        body: JSON.stringify({ recipientUsername, amount, description }),
+    });
+}
+
 /**
  * Audit API
  */

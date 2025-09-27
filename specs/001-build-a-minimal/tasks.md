@@ -33,7 +33,81 @@
 - [x] T058 Add password validation and security requirements
 - [x] T059 Update audit logging to track password authentication events
 - [x] T060 Test complete user journey: register → login (password + WebAuthn) → dashboard → transfer → audit `/specs/001-build-a-minimal/`
-**Prerequisites**: plan.md (required), research.md, data-model.md, contracts/
+
+## Phase 4.1: UX Bug Fixes & Polish (Based on testing feedback)
+- [x] T059 Implement user-to-user transfer functionality (atomic transactions) in src/backend/routes.js and src/frontend/js/app.js 
+- [x] T060 Update currency display from USD ($) to Indian Rupees (₹) across all interfaces in src/frontend/js/app.js and src/frontend/css/styles.css
+- [x] T061 Fix welcome message styling - force white text color in src/frontend/css/styles.css
+- [x] T062 Fix audit log showing "unknown event" - debug event type recording in src/backend/routes.js and src/backend/database.js
+- [x] T063 Fix logout cancellation redirecting to login instead of staying on dashboard in src/frontend/js/app.js
+- [x] T064 Remove withdraw/deposit functionality - keep only user-to-user transfers in src/frontend/index.html and src/frontend/js/app.js
+- [x] T065 Remove security warning text "🔐 Enter the exact username - no dropdown for security" from transfer form in src/frontend/index.html
+- [x] T066 Style balance display with green color and larger font size for better visibility in src/frontend/css/styles.css
+- [x] T067 Fix last login tracking showing "First time" instead of actual timestamp - debug database field mapping issue in src/backend/routes.js
+- [x] T068 Add proper transaction history display with formatted currency in src/frontend/js/app.js
+- [x] T069 Remove withdraw/deposit functionality - keep only user-to-user transfers in transfers tab
+- [ ] T070 Remove security warning text - remove "🔐 Enter the exact username - no dropdown for security" hint from user transfer form in src/frontend/index.html
+
+**Current Status: 6/10 completed**
+
+**Prerequisites**: Phase 3.6 completion, all current tests passing
+
+### Issue Details for Phase 4.1:
+
+#### T061: Welcome Message White Text Issue
+- **Problem**: Welcome message is not displaying in white color as requested
+- **Investigation**: Search ALL frontend files (not just CSS) - check src/frontend/index.html, src/frontend/js/app.js, src/frontend/css/styles.css
+- **Root Cause**: Need to identify if it's CSS specificity, inline styles, or JavaScript overriding the color
+
+#### T062: Audit Log Event Types
+- **Problem**: Audit log shows "unknown event" instead of descriptive event names
+- **Fix**: Update audit logging in src/backend/routes.js to use proper event types:
+  - "login" for authentication events
+  - "transaction" for money transfers
+  - "logout" for session termination
+  - "registration" for new user signup
+  - "balance_check" for dashboard views
+
+#### T063: Logout Cancellation Redirect
+- **Problem**: After clicking cancel on logout confirmation, user sees empty page
+- **Fix**: Modify logout cancellation handler in src/frontend/js/app.js to redirect back to dashboard tab
+
+#### T064: Balance Display Enhancement
+- **Problem**: Balance shows in dollars ($) instead of rupees (₹)
+- **Requirements**: 
+  - Change currency symbol to ₹ (Indian Rupee)
+  - Make balance text green color
+  - Increase font size for better visibility
+  - Beautify the wallet/balance display section
+
+#### T065: Empty Button Bug
+- **Problem**: Login and signup buttons sometimes appear empty/blank
+- **Investigation**: Debug intermittent rendering issue - check for:
+  - JavaScript timing issues
+  - CSS loading problems
+  - Event listener conflicts
+  - State management issues
+
+#### T066: User-to-User Transfer System
+- **Problem**: No transfer functionality between users
+- **Security Requirements**:
+  - NO user dropdown (security risk)
+  - Recipient must enter exact username manually
+  - Only transfer if recipient username exists
+  - Validate sufficient balance before transfer
+- **Implementation**: New transfer endpoint + frontend form
+
+#### T067: Last Login Tracking
+- **Problem**: Last login timestamp not registering/fetching correctly from database
+- **Investigation**: Check both database write (on login) and read (on dashboard display)
+- **Files**: src/backend/database.js for queries, src/backend/routes.js for login handling
+
+#### T068: Transaction History for Transfers
+- **Problem**: When implementing user-to-user transfers, recent transactions must update properly
+- **Requirements**:
+  - Sender sees: "Transfer to [username]: -₹[amount]"
+  - Recipient sees: "Received from [username]: +₹[amount]"
+  - Both transactions appear in respective recent transaction lists
 
 ## Execution Flow (main)
 ```

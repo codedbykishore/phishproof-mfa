@@ -116,7 +116,8 @@ router.post('/webauthn/register/verify', async (req, res) => {
 
     if (!verificationResult.success) {
       // Log failed registration attempt
-      createAuditEvent(null, 'registration_failed', {
+      createAuditEvent(null, 'registration', {
+        status: 'failed',
         error: verificationResult.error,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent'),
@@ -382,7 +383,9 @@ router.post('/webauthn/auth/verify', async (req, res) => {
 
     if (!verificationResult.success) {
       // Log failed authentication attempt
-      createAuditEvent(null, 'authentication_failed', {
+      createAuditEvent(null, 'login', {
+        status: 'failed',
+        reason: 'webauthn_verification_failed',
         error: verificationResult.error,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent'),
@@ -395,7 +398,9 @@ router.post('/webauthn/auth/verify', async (req, res) => {
     }
 
     // Update user's last login
-    updateUserLastLogin(verificationResult.userId);
+    console.log('🕐 About to update last login for user:', verificationResult.userId);
+    const lastLoginResult = updateUserLastLogin(verificationResult.userId);
+    console.log('🕐 Last login update result:', lastLoginResult);
 
     // Generate JWT token
     const tokenUserResult = findUserById(verificationResult.userId);
@@ -431,7 +436,7 @@ router.post('/webauthn/auth/verify', async (req, res) => {
     });
 
     // Log successful login (both password and WebAuthn verified)
-    createAuditEvent(verificationResult.userId, 'login_success', {
+    createAuditEvent(verificationResult.userId, 'login', {
       username: userResult.user.username,
       ipAddress: req.ip,
       userAgent: req.get('User-Agent'),
@@ -486,7 +491,7 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
         id: userResult.user.id,
         username: userResult.user.username,
         balance: userResult.user.balance,
-        lastLogin: userResult.user.lastLogin,
+        lastLogin: userResult.user.last_login,
       },
       recentTransactions: transactionsResult.transactions,
     });
@@ -499,7 +504,7 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
   }
 });
 
-// Transfer Endpoint
+// Transfer Endpoint (Self-transactions - deposits/withdrawals)
 // POST /api/transfers
 router.post('/transfers', authenticateToken, async (req, res) => {
   try {
@@ -571,7 +576,8 @@ router.post('/transfers', authenticateToken, async (req, res) => {
     };
 
     // Log audit event
-    createAuditEvent(userId, 'transfer', {
+    createAuditEvent(userId, 'transaction', {
+      type: 'debit',
       amount: amount,
       description: description.trim(),
       transactionId: transactionResult.transactionId,
@@ -586,6 +592,183 @@ router.post('/transfers', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Transfer error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// User-to-User Transfer Endpoint
+// POST /api/transfers/user
+router.post('/transfers/user', authenticateToken, async (req, res) => {
+  try {
+    const senderId = req.user.id;
+    const { recipientUsername, amount, description } = req.body;
+
+    // Validate input
+    if (!recipientUsername || typeof recipientUsername !== 'string' || recipientUsername.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Recipient username is required',
+      });
+    }
+
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid amount (positive number) is required',
+      });
+    }
+
+    if (!description || typeof description !== 'string' || description.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Description is required',
+      });
+    }
+
+    // Get sender user details
+    const senderResult = findUserById(senderId);
+    if (!senderResult.success) {
+      return res.status(404).json({
+        success: false,
+        error: 'Sender not found',
+      });
+    }
+
+    // Find recipient by username
+    const recipientResult = findUserByUsername(recipientUsername.trim());
+    if (!recipientResult.success) {
+      return res.status(404).json({
+        success: false,
+        error: 'Recipient user not found',
+      });
+    }
+
+    const recipient = recipientResult.user;
+
+    // Prevent self-transfer
+    if (senderId === recipient.id) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot transfer to yourself',
+      });
+    }
+
+    // Get current sender balance
+    const senderBalanceResult = getUserBalance(senderId);
+    if (!senderBalanceResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to check sender balance',
+      });
+    }
+
+    // Check sufficient balance
+    if (senderBalanceResult.balance < amount) {
+      return res.status(400).json({
+        success: false,
+        error: 'Insufficient balance',
+      });
+    }
+
+    // Get recipient balance
+    const recipientBalanceResult = getUserBalance(recipient.id);
+    if (!recipientBalanceResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to check recipient balance',
+      });
+    }
+
+    // Calculate new balances
+    const newSenderBalance = senderBalanceResult.balance - amount;
+    const newRecipientBalance = recipientBalanceResult.balance + amount;
+
+    // Create debit transaction for sender
+    const senderTransactionResult = createTransaction(
+      senderId, 
+      'debit', 
+      amount, 
+      `Transfer to ${recipient.username}: ${description.trim()}`, 
+      newSenderBalance
+    );
+    if (!senderTransactionResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create sender transaction',
+      });
+    }
+
+    // Create credit transaction for recipient
+    const recipientTransactionResult = createTransaction(
+      recipient.id, 
+      'credit', 
+      amount, 
+      `Received from ${senderResult.user.username}: ${description.trim()}`, 
+      newRecipientBalance
+    );
+    if (!recipientTransactionResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to create recipient transaction',
+      });
+    }
+
+    // Update sender's balance
+    const updateSenderBalanceResult = updateUserBalance(senderId, newSenderBalance);
+    if (!updateSenderBalanceResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update sender balance',
+      });
+    }
+
+    // Update recipient's balance
+    const updateRecipientBalanceResult = updateUserBalance(recipient.id, newRecipientBalance);
+    if (!updateRecipientBalanceResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update recipient balance',
+      });
+    }
+
+    // Log audit events for both users
+    createAuditEvent(senderId, 'transaction', {
+      type: 'transfer_sent',
+      amount: amount,
+      recipient: recipient.username,
+      description: description.trim(),
+      transactionId: senderTransactionResult.transactionId,
+      balanceBefore: senderBalanceResult.balance,
+      balanceAfter: newSenderBalance,
+    });
+
+    createAuditEvent(recipient.id, 'transaction', {
+      type: 'transfer_received',
+      amount: amount,
+      sender: senderResult.user.username,
+      description: description.trim(),
+      transactionId: recipientTransactionResult.transactionId,
+      balanceBefore: recipientBalanceResult.balance,
+      balanceAfter: newRecipientBalance,
+    });
+
+    res.json({
+      success: true,
+      transfer: {
+        id: senderTransactionResult.transactionId,
+        senderUsername: senderResult.user.username,
+        recipientUsername: recipient.username,
+        amount: amount,
+        description: description.trim(),
+        timestamp: new Date().toISOString(),
+      },
+      newBalance: newSenderBalance,
+    });
+  } catch (error) {
+    console.error('User transfer error:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error',
