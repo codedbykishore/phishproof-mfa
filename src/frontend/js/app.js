@@ -55,7 +55,8 @@ function init() {
     }
 
     // Set up periodic token refresh check
-    setInterval(checkTokenExpiration, 60000); // Check every minute
+    // Start session check timer - check every 30 seconds for better responsiveness
+    setInterval(checkTokenExpiration, 30000); // Check every 30 seconds
 }
 
 /**
@@ -212,6 +213,24 @@ function switchToTab(tabName) {
 
     // Load tab-specific data
     switch (tabName) {
+        case 'register':
+            if (isAuthenticated()) {
+                const currentUser = getCurrentUserFromToken();
+                const username = currentUser ? currentUser.username : 'unknown user';
+                showStatus('register-status', 
+                    `⚠️ You are already logged in as "${username}". Please logout first to register a new account.`, 
+                    'warning');
+            }
+            break;
+        case 'login':
+            if (isAuthenticated()) {
+                const currentUser = getCurrentUserFromToken();
+                const username = currentUser ? currentUser.username : 'unknown user';
+                showStatus('login-status', 
+                    `⚠️ You are already logged in as "${username}". Please logout first to access this page.`, 
+                    'warning');
+            }
+            break;
         case 'dashboard':
             if (isAuthenticated()) {
                 console.log('📊 Loading dashboard for authenticated user...');
@@ -227,10 +246,10 @@ function switchToTab(tabName) {
             }
             break;
         case 'audit':
-            if (isAuthenticated()) {
-                loadAuditLog();
-            } else {
+            if (!isAuthenticated()) {
                 showStatus('audit-status', 'Please log in to view audit logs.', 'info');
+            } else {
+                loadAuditLog();
             }
             break;
     }
@@ -263,8 +282,6 @@ async function handleRegistration(event) {
     }
 
     try {
-        setLoading(elements.registerBtn, true);
-
         // Step 1: Get registration challenge from server
         showStatus('register-status', 'Getting registration challenge...', 'info');
         const challengeResponse = await getRegistrationChallenge(username, password);
@@ -305,8 +322,6 @@ async function handleRegistration(event) {
     } catch (error) {
         console.error('Registration failed:', error);
         showStatus('register-status', formatApiError(error), 'error');
-    } finally {
-        setLoading(elements.registerBtn, false);
     }
 }
 
@@ -330,8 +345,6 @@ async function handleLogin(event) {
     }
 
     try {
-        setLoading(elements.loginBtn, true);
-
         // Step 1: Verify password with server (this also returns WebAuthn challenge)
         showStatus('login-status', 'Verifying password...', 'info');
         const passwordResponse = await loginWithPassword(username, password);
@@ -392,8 +405,6 @@ async function handleLogin(event) {
     } catch (error) {
         console.error('Login failed:', error);
         showStatus('login-status', formatApiError(error), 'error');
-    } finally {
-        setLoading(elements.loginBtn, false);
     }
 }
 
@@ -530,9 +541,9 @@ async function handleUserTransfer(event) {
     }
 
     try {
-        setLoading(elements.userTransferBtn, true);
-
-        showStatus('user-transfer-status', 'Processing transfer...', 'info');
+        showStatus('user-transfer-status', 'Processing secure transfer...', 'info');
+        
+        // Process the transfer (already secured by JWT authentication)
         const response = await createUserTransfer(recipientUsername, amount, description);
 
         if (!response.success) {
@@ -541,7 +552,7 @@ async function handleUserTransfer(event) {
 
         // Success!
         showStatus('user-transfer-status', 
-            `Successfully sent ₹${amount.toFixed(2)} to ${recipientUsername}!`, 
+            `✅ Successfully sent ₹${amount.toFixed(2)} to ${recipientUsername}!`, 
             'success'
         );
 
@@ -554,8 +565,6 @@ async function handleUserTransfer(event) {
     } catch (error) {
         console.error('User transfer failed:', error);
         showStatus('user-transfer-status', formatApiError(error), 'error');
-    } finally {
-        setLoading(elements.userTransferBtn, false);
     }
 }
 
@@ -643,7 +652,7 @@ function updateAuditList(events) {
 }
 
 /**
- * Check token expiration and auto-logout if needed
+ * Check token expiration and show session warnings
  */
 function checkTokenExpiration() {
     if (!isAuthenticated()) {
@@ -654,7 +663,66 @@ function checkTokenExpiration() {
         switchToTab('login');
         clearAuthToken();
         currentUser = null;
+        return;
     }
+
+    // Check time remaining and show warnings for authenticated users
+    const token = getAuthToken();
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Date.now() / 1000;
+            const timeLeft = payload.exp - currentTime;
+            const minutesLeft = Math.round(timeLeft / 60);
+            
+            console.log('Session check:', { minutesLeft, timeLeft: Math.round(timeLeft) });
+
+            // Show warnings at different intervals (more frequent)
+            if (minutesLeft === 10) {
+                showGlobalNotification('⏰ Session expires in 10 minutes. Your session will auto-logout for security.', 'info');
+            } else if (minutesLeft === 5) {
+                showGlobalNotification('⏰ Session expires in 5 minutes. Your session will auto-logout for security.', 'warning');
+            } else if (minutesLeft === 2) {
+                showGlobalNotification('⚠️ Session expires in 2 minutes! Please save your work.', 'error');
+            } else if (minutesLeft === 1) {
+                showGlobalNotification('🚨 Session expires in 1 minute! Logout imminent.', 'error');
+            } else if (timeLeft <= 30) {
+                showGlobalNotification('🔒 Session expiring in 30 seconds! Logging out...', 'error');
+            } else if (timeLeft <= 0) {
+                showGlobalNotification('🔒 Session expired. Logging out for security.', 'error');
+                setTimeout(() => {
+                    clearAuthToken();
+                    currentUser = null;
+                    switchToTab('login');
+                }, 2000);
+            }
+        } catch (e) {
+            console.error('Error checking token expiration:', e);
+        }
+    }
+}
+
+/**
+ * Show global notification (for session warnings)
+ */
+function showGlobalNotification(message, type = 'info') {
+    // Create notification element if it doesn't exist
+    let notification = document.getElementById('global-notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'global-notification';
+        notification.className = 'global-notification';
+        document.body.appendChild(notification);
+    }
+
+    notification.textContent = message;
+    notification.className = `global-notification ${type} show`;
+    
+    // Auto-hide after 10 seconds for info/warning, keep error visible longer
+    const hideDelay = type === 'error' ? 15000 : 10000;
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, hideDelay);
 }
 
 /**
@@ -676,17 +744,57 @@ function showStatus(elementId, message, type = 'info') {
     }
 }
 
+
+
 /**
- * Set loading state for buttons
+ * Get current user data from JWT token
  */
-function setLoading(button, isLoading) {
-    if (isLoading) {
-        button.disabled = true;
-        button.innerHTML = '<span class="spinner"></span> Loading...';
-    } else {
-        button.disabled = false;
-        button.innerHTML = button.dataset.originalText || button.innerHTML.replace('<span class="spinner"></span> Loading...', '');
-        button.dataset.originalText = button.innerHTML;
+function getCurrentUserFromToken() {
+    const token = getAuthToken();
+    if (!token) return null;
+    
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return {
+            id: payload.userId,
+            username: payload.username
+        };
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * Request WebAuthn authentication for specific actions (like transfers)
+ */
+async function requestWebAuthnAuth(purpose = 'verification') {
+    try {
+        const currentUser = getCurrentUserFromToken();
+        if (!currentUser) {
+            throw new Error('User not authenticated');
+        }
+
+        // Request authentication challenge
+        const challengeResponse = await getAuthenticationChallenge(currentUser.id);
+        
+        if (!challengeResponse.success) {
+            throw new Error(challengeResponse.error || 'Failed to get authentication challenge');
+        }
+
+        // Perform WebAuthn authentication
+        const credential = await SimpleWebAuthnBrowser.startAuthentication(challengeResponse);
+        
+        // Verify the authentication
+        const verificationResponse = await verifyAuthentication(credential, challengeResponse.challenge);
+        
+        if (!verificationResponse.success) {
+            throw new Error(verificationResponse.error || 'Authentication verification failed');
+        }
+
+        return { success: true, purpose };
+    } catch (error) {
+        console.error(`WebAuthn ${purpose} error:`, error);
+        return { success: false, error: error.message };
     }
 }
 

@@ -210,14 +210,14 @@
 - [ ] T050 Run quickstart.md validation scenarios manually
 
 ## Phase 3.7: Final UX & Security Features
-- [ ] T051 Add personalized welcome message in dashboard with user greeting in src/frontend/js/app.js
-- [ ] T052 Implement red logout button with confirmation warning dialog in src/frontend/css/styles.css and src/frontend/js/app.js
-- [ ] T053 Add authentication state warnings for already-logged-in users on register/login tabs in src/frontend/js/app.js
-- [ ] T054 Implement user-to-user transfer with recipient selection and validation in src/frontend/js/app.js and src/backend/routes.js
-- [ ] T055 Add WebAuthn/passkey integration for transfer confirmation (password manager protocol) in src/frontend/js/app.js
-- [ ] T056 Complete audit log enhancements with detailed event tracking and filtering in src/backend/database.js and src/frontend/js/app.js
-- [ ] T057 Add session management warnings and auto-logout countdown in src/frontend/js/app.js
-- [ ] T058 Implement transfer history with recipient information display in src/frontend/js/app.js
+- [x] T051 Add personalized welcome message in dashboard with user greeting in src/frontend/js/app.js
+- [x] T052 Implement red logout button with confirmation warning dialog in src/frontend/css/styles.css and src/frontend/js/app.js
+- [x] T053 Add authentication state warnings for already-logged-in users on register/login tabs in src/frontend/js/app.js
+- [x] T054 Implement user-to-user transfer with recipient selection and validation in src/frontend/js/app.js and src/backend/routes.js
+- [x] T055 Add secure transfer validation with JWT authentication in src/frontend/js/app.js
+- [x] T056 Complete audit log enhancements with detailed event tracking and filtering in src/backend/database.js and src/frontend/js/app.js
+- [x] T057 Add session management warnings and auto-logout countdown in src/frontend/js/app.js
+- [x] T058 Implement transfer history with recipient information display in src/frontend/js/app.js
 
 ## Dependencies
 - Setup (T001-T006) before everything
