@@ -2,22 +2,26 @@
 
 **Feature Branch**: `001-build-a-minimal`  
 **Created**: 2025-09-26  
-**Status**: Draft  
-**Input**: User description: "Build a minimal single-page banking prototype focused **only on phishing-resistant MFA (WebAuthn/Passkey)**.
+**Updated**: 2025-09-27  
+**Status**: Updated  
+**Input**: **Input**: User description: "Build a minimal banking prototype focused **on phishing-resistant MFA (WebAuthn/Passkey) with password fallback**.
 
 1. **App type:** Single-page app (SPA) — all interactions happen on one page with sections or tabs for Login/Register, Dashboard, Transactions, and Audit/Logs.  
 2. **Authentication (core):**  
-   - **WebAuthn / Passkey only** — implement register (create credential) and login (get assertion) flows.  
-   - Store public keys server-side (in-memory is fine for prototype).  
-3. **Dashboard:** Show fake account holder, balance (e.g., ₹5,000), and recent transactions (client-side state).  
-4. **Make Transfer:** Simple form that updates client-side balance and appends a transaction row.  
-5. **Audit/Log panel:** Record timestamped events for WebAuthn registration, login successes, and failed/invalid assertions.  
-6. **Visual cues:** Clear success/failure indicators (green for passkey success, red for failed auth) with short tooltips.  
-7. **Hosting:** Hostable on Vercel/Netlify (frontend) + tiny server (Node/Express or Flask) to handle WebAuthn challenge/verification and store public keys in memory.  
-8. **Security note (prototype):** No real money, in-memory storage OK, do not expose private keys or real credentials.  
-9. **Deliverables:** Hosted demo URL, GitHub repo with README (run steps + short demo script), and one-sentence description of the security benefit.
-
-**Goal:** judges can register a passkey, log in with WebAuthn, see a believable bank dashboard, perform a dummy transfer, and observe audit entries proving WebAuthn successes and failures."
+   - **Hybrid Authentication**: WebAuthn/Passkey as primary + password as fallback/secondary factor  
+   - **MFA Definition**: Combined approach provides multi-factor authentication through:  
+     - **Something you have** (authenticator device/hardware)  
+     - **Something you are** (biometric/PIN verification)  
+     - **Something you know** (password + credential possession)  
+   - Store public keys and passwords server-side (SQLite database for prototype).  
+3. **Post-Registration Flow:** After successful WebAuthn registration, redirect to login page (not dashboard)  
+4. **Dashboard:** Show fake account holder, balance (e.g., ₹5,000), and recent transactions (client-side state).  
+5. **Make Transfer:** Simple form that updates client-side balance and appends a transaction row.  
+6. **Audit/Log panel:** Record timestamped events for registration, login successes/failures, and transfer operations.  
+7. **Visual cues:** Clear success/failure indicators (green for successful auth/transfers, red for failed operations) with short tooltips.  
+8. **Hosting:** Hostable on Vercel/Netlify (frontend) + Node/Express server with SQLite to handle authentication and data storage.  
+9. **Security note (prototype):** No real money, local SQLite storage OK, do not expose private keys or real credentials.  
+10. **Deliverables:** Hosted demo URL, GitHub repo with README (run steps + short demo script), and description of the security benefits.
 
 ## Clarifications
 
@@ -78,13 +82,16 @@ When creating this spec from a user prompt:
 ## User Scenarios & Testing *(mandatory)*
 
 ### Primary User Story
-As a bank customer, I want to securely access my account using phishing-resistant authentication so that I can view my balance, make transfers, and see my transaction history without worrying about credential theft.
+As a bank customer, I want to securely access my personalized account using phishing-resistant authentication with enhanced security features so that I can view my balance, make both basic and user-to-user transfers, and monitor comprehensive audit logs with multiple layers of security protection.
 
 ### Acceptance Scenarios
-1. **Given** a new user visits the banking app, **When** they register with WebAuthn, **Then** they can access their dashboard and see their initial balance
-2. **Given** a registered user returns to the app, **When** they authenticate with their passkey, **Then** they can view their account details and transaction history
-3. **Given** an authenticated user is on their dashboard, **When** they make a transfer, **Then** their balance updates and a transaction record appears
-4. **Given** any user interaction occurs, **When** WebAuthn operations succeed or fail, **Then** clear visual indicators show the result with timestamped audit entries
+1. **Given** a new user visits the banking app, **When** they register with username/password and WebAuthn credential, **Then** they are redirected to login page
+2. **Given** a registered user visits the login page, **When** they enter username/password and complete WebAuthn authentication, **Then** they see personalized dashboard with welcome message
+3. **Given** an authenticated user is on their dashboard, **When** they make a basic transfer, **Then** their balance updates and a transaction record appears
+4. **Given** an authenticated user wants to send money to another user, **When** they search for recipient and initiate transfer, **Then** system requires WebAuthn confirmation for high-value transfers
+5. **Given** any user interaction occurs, **When** authentication or operations succeed/fail, **Then** clear visual indicators show results with comprehensive audit entries
+6. **Given** a user hovers over logout button, **When** the red warning appears, **Then** they see security reminder about proper session termination
+7. **Given** a user accesses audit logs, **When** they apply filters or search, **Then** they can find specific events and transaction details
 
 ### Edge Cases
 - What happens when WebAuthn registration fails due to device limitations?
@@ -92,19 +99,26 @@ As a bank customer, I want to securely access my account using phishing-resistan
 - What happens when user tries to make a transfer without sufficient balance?
 - How does system behave when WebAuthn credential becomes invalid?
 - What happens when user session expires after 30 minutes?
+- How does user-to-user transfer handle non-existent recipient usernames?
+- What happens when user cancels WebAuthn confirmation during transfer?
+- How does system handle audit log search with no matching results?
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
-- **FR-001**: System MUST allow users to register WebAuthn credentials for account access
-- **FR-002**: System MUST authenticate users exclusively through WebAuthn passkey verification
-- **FR-003**: System MUST display account dashboard with balance and transaction history after successful authentication
-- **FR-004**: System MUST enable users to perform transfer operations that update balance and create transaction records
-- **FR-005**: System MUST record timestamped audit events for all WebAuthn operations and authentication attempts
-- **FR-006**: System MUST provide clear visual success/failure indicators for authentication and transfer operations
-- **FR-007**: System MUST maintain user session state during authenticated interactions for up to 30 minutes
-- **FR-008**: System MUST provide hosted demo accessible via public URL
-- **FR-009**: System MUST complete WebAuthn registration and authentication operations within 1 second
+- **FR-001**: System MUST allow users to register with username, password, and WebAuthn credentials for account access
+- **FR-002**: System MUST authenticate users through password verification followed by WebAuthn passkey verification (two-factor)
+- **FR-003**: System MUST redirect users to login page after successful registration (not dashboard)
+- **FR-004**: System MUST display personalized account dashboard with welcome message, balance, and transaction history after successful authentication
+- **FR-005**: System MUST enable users to perform basic transfer operations that update balance and create transaction records
+- **FR-006**: System MUST provide user-to-user transfer functionality with recipient search and WebAuthn confirmation for high-value transfers
+- **FR-007**: System MUST display prominent red logout button with security warning tooltip on hover
+- **FR-008**: System MUST record comprehensive timestamped audit events for all authentication, transfer, and security operations
+- **FR-009**: System MUST provide audit log filtering and search capabilities for event types, dates, and transaction details
+- **FR-010**: System MUST provide clear visual success/failure indicators for authentication and transfer operations with detailed error messages
+- **FR-011**: System MUST maintain user session state during authenticated interactions for up to 30 minutes with proper timeout warnings
+- **FR-012**: System MUST provide hosted demo accessible via public URL
+- **FR-013**: System MUST complete authentication operations within 1 second
 
 ### Non-Functional Requirements
 - **NFR-001**: WebAuthn operations MUST complete within 1 second
@@ -112,9 +126,9 @@ As a bank customer, I want to securely access my account using phishing-resistan
 - **NFR-003**: Audit events MUST be retained for 24 hours for prototype demonstration
 
 ### Key Entities *(include if feature involves data)*
-- **User**: Represents a bank account holder identified by WebAuthn credential ID with account balance
-- **Transaction**: Represents a money transfer with amount, timestamp, and description
-- **AuditEvent**: Represents security events with timestamp, event type, and success/failure status, retained for 24 hours
+- **User**: Represents a bank account holder with username, hashed password, WebAuthn credential ID, public key, and account balance
+- **Transaction**: Represents money transfers with amount, timestamp, description, type (debit/transfer_out/transfer_in), and optional recipient information
+- **AuditEvent**: Represents comprehensive security events with timestamp, event type (authentication, transfer, transfer_confirmation, security_warning, session_management), user context, success/failure status, and detailed metadata, retained for 24 hours
 
 ---
 

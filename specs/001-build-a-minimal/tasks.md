@@ -1,7 +1,113 @@
 # Tasks: Build a Minimal Banking Prototype with Phishing-Resistant MFA
 
-**Input**: Design documents from `/specs/001-build-a-minimal/`
-**Prerequisites**: plan.md (required), research.md, data-model.md, contracts/
+**Input**: Design docu## Phase 3.6: Polis## Phase 3.6: Polish & UX Enhancements
+- [x] T042 [P] Add unit tests for WebAuthn utilities in tests/unit/webauthn-utils.test.js
+- [x] T043 [P] Add unit tests for database operations in tests/unit/database.test.js
+- [x] T044 [P] Add unit tests for authentication middleware in tests/unit/auth.test.js
+- [x] T045 Performance test WebAuthn operations (<1 second) in tests/performance/webauthn-performance.test.js
+- [x] T046 Performance test page load times (<3 seconds) in tests/performance/page-load-performance.test.js
+- [x] T047 [P] Create README.md with setup and demo instructions
+- [x] T048 [P] Add JSDoc comments and code documentation
+- [x] T049 Configure Vite build for production deployment
+- [x] T050 Run quickstart.md validation scenarios manually
+
+## Phase 3.7: Final UX & Security Features (Enhanced Implementation)
+- [x] T051 Add personalized welcome message in dashboard with user greeting in src/frontend/js/app.js
+- [x] T052 Implement red logout button with confirmation warning dialog in src/frontend/css/styles.css and src/frontend/js/app.jsg
+- [x] T042 [P] Add unit tests for WebAuthn utilities in tests/unit/test-webauthn-utils.js
+- [x] T043 [P] Add unit tests for database operations in tests/unit/test-database.js
+- [x] T044 [P] Add unit tests for authentication middleware in tests/unit/test-auth.js
+- [x] T045 Performance test WebAuthn operations (<1 second) in tests/performance/test-webauthn-performance.js
+- [x] T046 Performance test page load times (<3 seconds) in tests/performance/test-page-load.js
+- [x] T047 [P] Create README.md with setup and demo instructions
+- [x] T048 [P] Add JSDoc comments and code documentation
+- [x] T049 Configure Vite build for production deployment
+- [x] T050 Run quickstart.md validation scenarios manually
+- [x] T051 Update registration flow to redirect to login page after successful registration
+- [x] T052 Add password field to user registration and login forms
+- [x] T053 Implement password hashing and verification in backend
+- [x] T054 Update authentication flow to require password + WebAuthn (two-factor)
+- [x] T055 Update database schema to include password field for users
+- [x] T056 Modify frontend to handle two-step authentication process
+- [x] T057 Update API endpoints to support password-based authentication
+- [x] T058 Add password validation and security requirements
+- [x] T059 Update audit logging to track password authentication events
+- [x] T060 Test complete user journey: register → login (password + WebAuthn) → dashboard → transfer → audit `/specs/001-build-a-minimal/`
+
+## Phase 4.1: UX Bug Fixes & Polish (Based on testing feedback)
+- [x] T059 Implement user-to-user transfer functionality (atomic transactions) in src/backend/routes.js and src/frontend/js/app.js 
+- [x] T060 Update currency display from USD ($) to Indian Rupees (₹) across all interfaces in src/frontend/js/app.js and src/frontend/css/styles.css
+- [x] T061 Fix welcome message styling - force white text color in src/frontend/css/styles.css
+- [x] T062 Fix audit log showing "unknown event" - debug event type recording in src/backend/routes.js and src/backend/database.js
+- [x] T063 Fix logout cancellation redirecting to login instead of staying on dashboard in src/frontend/js/app.js
+- [x] T064 Remove withdraw/deposit functionality - keep only user-to-user transfers in src/frontend/index.html and src/frontend/js/app.js
+- [x] T065 Remove security warning text "🔐 Enter the exact username - no dropdown for security" from transfer form in src/frontend/index.html
+- [x] T066 Style balance display with green color and larger font size for better visibility in src/frontend/css/styles.css
+- [x] T067 Fix last login tracking showing "First time" instead of actual timestamp - debug database field mapping issue in src/backend/routes.js
+- [x] T068 Add proper transaction history display with formatted currency in src/frontend/js/app.js
+- [x] T069 Remove withdraw/deposit functionality - keep only user-to-user transfers in transfers tab
+- [ ] T070 Remove security warning text - remove "🔐 Enter the exact username - no dropdown for security" hint from user transfer form in src/frontend/index.html
+
+**Current Status: 6/10 completed**
+
+**Prerequisites**: Phase 3.6 completion, all current tests passing
+
+### Issue Details for Phase 4.1:
+
+#### T061: Welcome Message White Text Issue
+- **Problem**: Welcome message is not displaying in white color as requested
+- **Investigation**: Search ALL frontend files (not just CSS) - check src/frontend/index.html, src/frontend/js/app.js, src/frontend/css/styles.css
+- **Root Cause**: Need to identify if it's CSS specificity, inline styles, or JavaScript overriding the color
+
+#### T062: Audit Log Event Types
+- **Problem**: Audit log shows "unknown event" instead of descriptive event names
+- **Fix**: Update audit logging in src/backend/routes.js to use proper event types:
+  - "login" for authentication events
+  - "transaction" for money transfers
+  - "logout" for session termination
+  - "registration" for new user signup
+  - "balance_check" for dashboard views
+
+#### T063: Logout Cancellation Redirect
+- **Problem**: After clicking cancel on logout confirmation, user sees empty page
+- **Fix**: Modify logout cancellation handler in src/frontend/js/app.js to redirect back to dashboard tab
+
+#### T064: Balance Display Enhancement
+- **Problem**: Balance shows in dollars ($) instead of rupees (₹)
+- **Requirements**: 
+  - Change currency symbol to ₹ (Indian Rupee)
+  - Make balance text green color
+  - Increase font size for better visibility
+  - Beautify the wallet/balance display section
+
+#### T065: Empty Button Bug
+- **Problem**: Login and signup buttons sometimes appear empty/blank
+- **Investigation**: Debug intermittent rendering issue - check for:
+  - JavaScript timing issues
+  - CSS loading problems
+  - Event listener conflicts
+  - State management issues
+
+#### T066: User-to-User Transfer System
+- **Problem**: No transfer functionality between users
+- **Security Requirements**:
+  - NO user dropdown (security risk)
+  - Recipient must enter exact username manually
+  - Only transfer if recipient username exists
+  - Validate sufficient balance before transfer
+- **Implementation**: New transfer endpoint + frontend form
+
+#### T067: Last Login Tracking
+- **Problem**: Last login timestamp not registering/fetching correctly from database
+- **Investigation**: Check both database write (on login) and read (on dashboard display)
+- **Files**: src/backend/database.js for queries, src/backend/routes.js for login handling
+
+#### T068: Transaction History for Transfers
+- **Problem**: When implementing user-to-user transfers, recent transactions must update properly
+- **Requirements**:
+  - Sender sees: "Transfer to [username]: -₹[amount]"
+  - Recipient sees: "Received from [username]: +₹[amount]"
+  - Both transactions appear in respective recent transaction lists
 
 ## Execution Flow (main)
 ```
@@ -65,43 +171,53 @@
 - [x] T017 [P] Create AuditEvent database model and queries in src/backend/database.js
 - [x] T018 [P] Implement WebAuthn server utilities in src/backend/webauthn.js
 - [x] T019 [P] Implement JWT authentication middleware in src/backend/auth.js
-- [ ] T020 Implement WebAuthn registration challenge endpoint in src/backend/routes.js
-- [ ] T021 Implement WebAuthn registration verify endpoint in src/backend/routes.js
-- [ ] T022 Implement WebAuthn authentication challenge endpoint in src/backend/routes.js
-- [ ] T023 Implement WebAuthn authentication verify endpoint in src/backend/routes.js
-- [ ] T024 Implement dashboard data endpoint in src/backend/routes.js
-- [ ] T025 Implement transfer creation endpoint in src/backend/routes.js
-- [ ] T026 Implement audit events endpoint in src/backend/routes.js
+- [x] T020 Implement WebAuthn registration challenge endpoint in src/backend/routes.js
+- [x] T021 Implement WebAuthn registration verify endpoint in src/backend/routes.js
+- [x] T022 Implement WebAuthn authentication challenge endpoint in src/backend/routes.js
+- [x] T023 Implement WebAuthn authentication verify endpoint in src/backend/routes.js
+- [x] T024 Implement dashboard data endpoint in src/backend/routes.js
+- [x] T025 Implement transfer creation endpoint in src/backend/routes.js
+- [x] T026 Implement audit events endpoint in src/backend/routes.js
 
 ## Phase 3.4: Frontend Implementation
-- [ ] T027 [P] Create main HTML structure with tabs in src/frontend/index.html
-- [ ] T028 [P] Implement CSS styles for banking UI in src/frontend/css/styles.css
-- [ ] T029 [P] Create WebAuthn client utilities in src/frontend/js/webauthn.js
-- [ ] T030 [P] Create API client functions in src/frontend/js/api.js
-- [ ] T031 Implement main application logic and state management in src/frontend/js/app.js
-- [ ] T032 Implement registration tab UI and interactions in src/frontend/js/app.js
-- [ ] T033 Implement login tab UI and interactions in src/frontend/js/app.js
-- [ ] T034 Implement dashboard tab UI and data display in src/frontend/js/app.js
-- [ ] T035 Implement transactions tab UI and transfer form in src/frontend/js/app.js
-- [ ] T036 Implement audit/logs tab UI and event display in src/frontend/js/app.js
+- [x] T027 [P] Create main HTML structure with tabs in src/frontend/index.html
+- [x] T028 [P] Implement CSS styles for banking UI in src/frontend/css/styles.css
+- [x] T029 [P] Create WebAuthn client utilities in src/frontend/js/webauthn.js
+- [x] T030 [P] Create API client functions in src/frontend/js/api.js
+- [x] T031 Implement main application logic and state management in src/frontend/js/app.js
+- [x] T032 Implement registration tab UI and interactions in src/frontend/js/app.js
+- [x] T033 Implement login tab UI and interactions in src/frontend/js/app.js
+- [x] T034 Implement dashboard tab UI and data display in src/frontend/js/app.js
+- [x] T035 Implement transactions tab UI and transfer form in src/frontend/js/app.js
+- [x] T036 Implement audit/logs tab UI and event display in src/frontend/js/app.js
 
 ## Phase 3.5: Integration & Security
-- [ ] T037 Initialize SQLite database with schema in src/backend/server.js
-- [ ] T038 Configure Express middleware (CORS, helmet, JSON parsing) in src/backend/server.js
-- [ ] T039 Implement audit event logging for all operations in src/backend/routes.js
-- [ ] T040 Implement session timeout handling (30 minutes) in src/backend/auth.js
-- [ ] T041 Implement audit event cleanup (24-hour retention) in src/backend/database.js
+- [x] T037 Initialize SQLite database with schema in src/backend/server.js
+- [x] T038 Configure Express middleware (CORS, helmet, JSON parsing) in src/backend/server.js
+- [x] T039 Implement audit event logging for all operations in src/backend/routes.js
+- [x] T040 Implement session timeout handling (30 minutes) in src/backend/auth.js
+- [x] T041 Implement audit event cleanup (24-hour retention) in src/backend/database.js
 
-## Phase 3.6: Polish
+## Phase 3.6: Polish & UX Enhancements
 - [ ] T042 [P] Add unit tests for WebAuthn utilities in tests/unit/test-webauthn-utils.js
 - [ ] T043 [P] Add unit tests for database operations in tests/unit/test-database.js
 - [ ] T044 [P] Add unit tests for authentication middleware in tests/unit/test-auth.js
 - [ ] T045 Performance test WebAuthn operations (<1 second) in tests/performance/test-webauthn-performance.js
 - [ ] T046 Performance test page load times (<3 seconds) in tests/performance/test-page-load.js
-- [ ] T047 [P] Create README.md with setup and demo instructions
+- [x] T047 [P] Create README.md with setup and demo instructions
 - [ ] T048 [P] Add JSDoc comments and code documentation
 - [ ] T049 Configure Vite build for production deployment
 - [ ] T050 Run quickstart.md validation scenarios manually
+
+## Phase 3.7: Final UX & Security Features
+- [x] T051 Add personalized welcome message in dashboard with user greeting in src/frontend/js/app.js
+- [x] T052 Implement red logout button with confirmation warning dialog in src/frontend/css/styles.css and src/frontend/js/app.js
+- [x] T053 Add authentication state warnings for already-logged-in users on register/login tabs in src/frontend/js/app.js
+- [x] T054 Implement user-to-user transfer with recipient selection and validation in src/frontend/js/app.js and src/backend/routes.js
+- [x] T055 Add secure transfer validation with JWT authentication in src/frontend/js/app.js
+- [x] T056 Complete audit log enhancements with detailed event tracking and filtering in src/backend/database.js and src/frontend/js/app.js
+- [x] T057 Add session management warnings and auto-logout countdown in src/frontend/js/app.js
+- [x] T058 Implement transfer history with recipient information display in src/frontend/js/app.js
 
 ## Dependencies
 - Setup (T001-T006) before everything

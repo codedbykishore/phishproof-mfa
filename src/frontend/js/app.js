@@ -9,8 +9,9 @@ import {
     verifyRegistration,
     getAuthenticationChallenge,
     verifyAuthentication,
+    loginWithPassword,
     getDashboard,
-    createTransfer,
+    createUserTransfer,
     getAuditEvents,
     setAuthToken,
     getAuthToken,
@@ -40,15 +41,22 @@ function init() {
     checkWebAuthnSupport();
 
     // Check if user is already authenticated
+    console.log('🚀 App initialization, checking authentication...');
+    console.log('📦 localStorage authToken:', localStorage.getItem('authToken') ? 'exists' : 'missing');
+    
     if (isAuthenticated()) {
+        console.log('✅ User is authenticated, loading dashboard...');
+        elements.logoutBtn.style.display = 'inline-block';
         switchToTab('dashboard');
-        loadDashboard();
+        // Note: loadDashboard() will be called by switchToTab automatically
     } else {
+        console.log('❌ User not authenticated, switching to register tab...');
         switchToTab('register');
     }
 
     // Set up periodic token refresh check
-    setInterval(checkTokenExpiration, 60000); // Check every minute
+    // Start session check timer - check every 30 seconds for better responsiveness
+    setInterval(checkTokenExpiration, 30000); // Check every 30 seconds
 }
 
 /**
@@ -56,45 +64,61 @@ function init() {
  */
 function cacheElements() {
     elements = {
-        // Navigation
+        // Tabs
         tabButtons: document.querySelectorAll('.tab-button'),
+        tabContents: document.querySelectorAll('.tab-content'),
 
-        // Registration
+        // Register
         registerForm: document.getElementById('register-form'),
         registerUsername: document.getElementById('register-username'),
+        registerPassword: document.getElementById('register-password'),
+        registerConfirmPassword: document.getElementById('register-confirm-password'),
         registerBtn: document.getElementById('register-btn'),
         registerStatus: document.getElementById('register-status'),
 
         // Login
         loginForm: document.getElementById('login-form'),
         loginUsername: document.getElementById('login-username'),
+        loginPassword: document.getElementById('login-password'),
         loginBtn: document.getElementById('login-btn'),
         loginStatus: document.getElementById('login-status'),
 
         // Dashboard
         dashboardContent: document.getElementById('dashboard-content'),
+        welcomeMessage: document.getElementById('welcome-message'),
+        welcomeSubtitle: document.getElementById('welcome-subtitle'),
         userUsername: document.getElementById('user-username'),
         userBalance: document.getElementById('user-balance'),
         userLastLogin: document.getElementById('user-last-login'),
         transactionsList: document.getElementById('transactions-list'),
         dashboardStatus: document.getElementById('dashboard-status'),
 
-        // Transfers
-        transferForm: document.getElementById('transfer-form'),
-        transferAmount: document.getElementById('transfer-amount'),
-        transferDescription: document.getElementById('transfer-description'),
-        transferBtn: document.getElementById('transfer-btn'),
-        transferStatus: document.getElementById('transfer-status'),
+        // User-to-User Transfers
+        userTransferForm: document.getElementById('user-transfer-form'),
+        recipientUsername: document.getElementById('recipient-username'),
+        userTransferAmount: document.getElementById('user-transfer-amount'),
+        userTransferDescription: document.getElementById('user-transfer-description'),
+        userTransferBtn: document.getElementById('user-transfer-btn'),
+        userTransferStatus: document.getElementById('user-transfer-status'),
 
         // Audit
         auditContent: document.getElementById('audit-content'),
         auditList: document.getElementById('audit-list'),
         refreshAuditBtn: document.getElementById('refresh-audit-btn'),
         auditStatus: document.getElementById('audit-status'),
-    };
-}
 
-/**
+        // Logout
+        logoutBtn: document.getElementById('logout-btn'),
+        logoutModal: document.getElementById('logout-modal'),
+        cancelLogout: document.getElementById('cancel-logout'),
+        confirmLogout: document.getElementById('confirm-logout'),
+    };
+    
+    // Verify critical elements are cached
+    if (!elements.tabButtons || elements.tabButtons.length === 0) {
+        console.error('❌ Critical error: No tab buttons found!');
+    }
+}/**
  * Set up event listeners
  */
 function setupEventListeners() {
@@ -112,11 +136,38 @@ function setupEventListeners() {
     // Login form
     elements.loginForm.addEventListener('submit', handleLogin);
 
-    // Transfer form
-    elements.transferForm.addEventListener('submit', handleTransfer);
+    // User-to-user transfer form
+    elements.userTransferForm.addEventListener('submit', handleUserTransfer);
 
     // Audit refresh button
     elements.refreshAuditBtn.addEventListener('click', loadAuditLog);
+
+    // Logout button - show confirmation modal
+    elements.logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        showLogoutModal();
+    });
+
+    // Modal event listeners
+    elements.cancelLogout.addEventListener('click', hideLogoutModal);
+    elements.confirmLogout.addEventListener('click', () => {
+        hideLogoutModal();
+        logout();
+    });
+
+    // Close modal on background click
+    elements.logoutModal.addEventListener('click', (e) => {
+        if (e.target === elements.logoutModal) {
+            hideLogoutModal();
+        }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && elements.logoutModal.classList.contains('show')) {
+            hideLogoutModal();
+        }
+    });
 }
 
 /**
@@ -162,23 +213,43 @@ function switchToTab(tabName) {
 
     // Load tab-specific data
     switch (tabName) {
+        case 'register':
+            if (isAuthenticated()) {
+                const currentUser = getCurrentUserFromToken();
+                const username = currentUser ? currentUser.username : 'unknown user';
+                showStatus('register-status', 
+                    `⚠️ You are already logged in as "${username}". Please logout first to register a new account.`, 
+                    'warning');
+            }
+            break;
+        case 'login':
+            if (isAuthenticated()) {
+                const currentUser = getCurrentUserFromToken();
+                const username = currentUser ? currentUser.username : 'unknown user';
+                showStatus('login-status', 
+                    `⚠️ You are already logged in as "${username}". Please logout first to access this page.`, 
+                    'warning');
+            }
+            break;
         case 'dashboard':
             if (isAuthenticated()) {
+                console.log('📊 Loading dashboard for authenticated user...');
                 loadDashboard();
             } else {
+                console.log('🔐 User not authenticated, showing login prompt...');
                 showStatus('dashboard-status', 'Please log in to view your dashboard.', 'info');
             }
             break;
         case 'transfers':
             if (!isAuthenticated()) {
-                showStatus('transfer-status', 'Please log in to make transfers.', 'info');
+                showStatus('user-transfer-status', 'Please log in to send money to other users.', 'info');
             }
             break;
         case 'audit':
-            if (isAuthenticated()) {
-                loadAuditLog();
-            } else {
+            if (!isAuthenticated()) {
                 showStatus('audit-status', 'Please log in to view audit logs.', 'info');
+            } else {
+                loadAuditLog();
             }
             break;
     }
@@ -191,18 +262,29 @@ async function handleRegistration(event) {
     event.preventDefault();
 
     const username = elements.registerUsername.value.trim();
+    const password = elements.registerPassword.value;
+    const confirmPassword = elements.registerConfirmPassword.value;
 
-    if (!username) {
-        showStatus('register-status', 'Please enter a username.', 'error');
+    // Validation
+    if (!username || username.length < 3) {
+        showStatus('register-status', 'Username must be at least 3 characters long.', 'error');
+        return;
+    }
+
+    if (!password || password.length < 8) {
+        showStatus('register-status', 'Password must be at least 8 characters long.', 'error');
+        return;
+    }
+
+    if (password !== confirmPassword) {
+        showStatus('register-status', 'Passwords do not match.', 'error');
         return;
     }
 
     try {
-        setLoading(elements.registerBtn, true);
-
         // Step 1: Get registration challenge from server
         showStatus('register-status', 'Getting registration challenge...', 'info');
-        const challengeResponse = await getRegistrationChallenge(username);
+        const challengeResponse = await getRegistrationChallenge(username, password);
 
         if (!challengeResponse.success) {
             throw new Error(challengeResponse.error || 'Failed to get registration challenge');
@@ -231,23 +313,15 @@ async function handleRegistration(event) {
         }
 
         // Success!
-        showStatus('register-status', `Registration successful! Welcome, ${username}!`, 'success');
+        showStatus('register-status', `Registration successful! Please log in with your credentials.`, 'success');
 
-        // Store auth token
-        if (verificationResponse.token) {
-            setAuthToken(verificationResponse.token);
-            currentUser = verificationResponse.user;
-        }
-
-        // Clear form and switch to dashboard
+        // Clear form and switch to login page
         elements.registerForm.reset();
-        switchToTab('dashboard');
+        switchToTab('login');
 
     } catch (error) {
         console.error('Registration failed:', error);
         showStatus('register-status', formatApiError(error), 'error');
-    } finally {
-        setLoading(elements.registerBtn, false);
     }
 }
 
@@ -258,32 +332,42 @@ async function handleLogin(event) {
     event.preventDefault();
 
     const username = elements.loginUsername.value.trim();
+    const password = elements.loginPassword.value;
 
     if (!username) {
         showStatus('login-status', 'Please enter your username.', 'error');
         return;
     }
 
+    if (!password) {
+        showStatus('login-status', 'Please enter your password.', 'error');
+        return;
+    }
+
     try {
-        setLoading(elements.loginBtn, true);
+        // Step 1: Verify password with server (this also returns WebAuthn challenge)
+        showStatus('login-status', 'Verifying password...', 'info');
+        const passwordResponse = await loginWithPassword(username, password);
 
-        // For login, we need to get the user ID first
-        // In a real app, this would be a separate endpoint, but for demo we'll use the username
-        showStatus('login-status', 'Getting authentication challenge...', 'info');
-
-        // This is a simplified flow - in reality, you'd look up the user first
-        const challengeResponse = await getAuthenticationChallenge(username);
-
-        if (!challengeResponse.success) {
-            throw new Error(challengeResponse.error || 'Failed to get authentication challenge');
+        if (!passwordResponse.success) {
+            throw new Error(passwordResponse.error || 'Password verification failed');
         }
 
-        currentChallenge = challengeResponse.challenge;
+        // The password response already includes the WebAuthn challenge options
+        currentChallenge = passwordResponse.challenge;
 
-        // Step 2: Authenticate with passkey
+        // Extract WebAuthn options from the password response
+        const webauthnOptions = {
+            challenge: passwordResponse.challenge,
+            allowCredentials: passwordResponse.allowCredentials,
+            rpId: passwordResponse.rpId,
+            timeout: passwordResponse.timeout,
+            userVerification: passwordResponse.userVerification,
+        };
+
+        // Step 2: Authenticate with passkey using the extracted options
         showStatus('login-status', 'Authenticating with your passkey... Please interact with your authenticator.', 'info');
-        const { success: authSuccess, ...authOptions } = challengeResponse;
-        const authResult = await authenticatePasskey(authOptions);
+        const authResult = await authenticatePasskey(webauthnOptions);
 
         if (!authResult.success) {
             throw new Error(authResult.error || 'Passkey authentication failed');
@@ -291,6 +375,10 @@ async function handleLogin(event) {
 
         // Step 3: Verify authentication with server
         showStatus('login-status', 'Verifying authentication...', 'info');
+        console.log('About to verify authentication with:', {
+            credential: authResult.credential,
+            challenge: currentChallenge
+        });
         const verificationResponse = await verifyAuthentication(
             authResult.credential,
             currentChallenge
@@ -307,6 +395,9 @@ async function handleLogin(event) {
         setAuthToken(verificationResponse.token);
         currentUser = verificationResponse.user;
 
+        // Show logout button
+        elements.logoutBtn.style.display = 'inline-block';
+
         // Clear form and switch to dashboard
         elements.loginForm.reset();
         switchToTab('dashboard');
@@ -314,8 +405,6 @@ async function handleLogin(event) {
     } catch (error) {
         console.error('Login failed:', error);
         showStatus('login-status', formatApiError(error), 'error');
-    } finally {
-        setLoading(elements.loginBtn, false);
     }
 }
 
@@ -330,19 +419,59 @@ async function loadDashboard() {
 
     try {
         showStatus('dashboard-status', 'Loading dashboard...', 'info');
+        console.log('📊 Loading dashboard, token exists:', !!getAuthToken());
+        
         const response = await getDashboard();
+        console.log('📊 Dashboard API response:', response);
 
         if (!response.success) {
+            // Check if it's an authentication error
+            if (response.error && (
+                response.error.includes('token') || 
+                response.error.includes('unauthorized') ||
+                response.error.includes('Access token required')
+            )) {
+                console.log('🔐 Authentication failed, clearing token and redirecting...');
+                clearAuthToken();
+                currentUser = null;
+                elements.logoutBtn.style.display = 'none';
+                switchToTab('login');
+                showStatus('login-status', 'Your session has expired. Please log in again.', 'info');
+                return;
+            }
+            
             throw new Error(response.error || 'Failed to load dashboard');
         }
 
+        // Debug: Check if elements are properly cached
+        console.log('🎯 Welcome elements check:', {
+            welcomeMessage: elements.welcomeMessage,
+            welcomeSubtitle: elements.welcomeSubtitle
+        });
+
         // Update user info
         currentUser = response.user;
+        
+        // Update personalized welcome message with defensive checks
+        const username = currentUser.username || 'User';
+        const timeOfDay = getTimeOfDayGreeting();
+        
+        if (elements.welcomeMessage) {
+            elements.welcomeMessage.textContent = `${timeOfDay}, ${username}!`;
+        }
+        
+        if (elements.welcomeSubtitle) {
+            const lastLoginIST = currentUser.lastLogin 
+                ? new Date(new Date(currentUser.lastLogin).getTime() + (330 * 60 * 1000)).toLocaleString('en-IN').replace(/,/, '') + ' IST'
+                : 'First time';
+            elements.welcomeSubtitle.textContent = `Your secure banking dashboard • Last login: ${lastLoginIST}`;
+        }
+        
         elements.userUsername.textContent = currentUser.username || '-';
-        elements.userBalance.textContent = (currentUser.balance || 0).toFixed(2);
+        elements.userBalance.textContent = `₹${(currentUser.balance || 0).toFixed(2)}`;
         elements.userLastLogin.textContent = currentUser.lastLogin
-            ? new Date(currentUser.lastLogin).toLocaleString()
-            : '-';
+            ? new Date(new Date(currentUser.lastLogin).getTime() + (330 * 60 * 1000)).toLocaleString('en-IN').replace(/,/, '') + ' IST'
+            : 'First time';
 
         // Update transactions
         updateTransactionsList(response.recentTransactions || []);
@@ -370,10 +499,10 @@ function updateTransactionsList(transactions) {
         <div class="transaction-item">
             <div class="transaction-info">
                 <div class="transaction-amount ${transaction.type}">
-                    ${transaction.type === 'debit' ? '-' : '+'}$${Math.abs(transaction.amount).toFixed(2)}
+                    ${transaction.type === 'debit' ? '-' : '+'}₹${Math.abs(transaction.amount).toFixed(2)}
                 </div>
                 <div class="transaction-description">${transaction.description || 'No description'}</div>
-                <div class="transaction-timestamp">${new Date(transaction.timestamp).toLocaleString()}</div>
+                <div class="transaction-timestamp">${new Date(new Date(transaction.timestamp).getTime() + (330 * 60 * 1000)).toLocaleString('en-IN').replace(/,/, '') + ' IST'}</div>
             </div>
         </div>
     `).join('');
@@ -382,53 +511,60 @@ function updateTransactionsList(transactions) {
 }
 
 /**
- * Handle transfer creation
+ * Handle user-to-user transfer
  */
-async function handleTransfer(event) {
+async function handleUserTransfer(event) {
     event.preventDefault();
 
     if (!isAuthenticated()) {
-        showStatus('transfer-status', 'Please log in to make transfers.', 'info');
+        showStatus('user-transfer-status', 'Please log in to send money to other users.', 'info');
         return;
     }
 
-    const amount = parseFloat(elements.transferAmount.value);
-    const description = elements.transferDescription.value.trim();
+    const recipientUsername = elements.recipientUsername.value.trim();
+    const amount = parseFloat(elements.userTransferAmount.value);
+    const description = elements.userTransferDescription.value.trim();
+
+    if (!recipientUsername) {
+        showStatus('user-transfer-status', 'Please enter the recipient username.', 'error');
+        return;
+    }
 
     if (!amount || amount <= 0) {
-        showStatus('transfer-status', 'Please enter a valid amount greater than $0.00.', 'error');
+        showStatus('user-transfer-status', 'Please enter a valid amount greater than ₹0.00.', 'error');
         return;
     }
 
     if (!description) {
-        showStatus('transfer-status', 'Please enter a description for the transfer.', 'error');
+        showStatus('user-transfer-status', 'Please enter a description for the transfer.', 'error');
         return;
     }
 
     try {
-        setLoading(elements.transferBtn, true);
-
-        showStatus('transfer-status', 'Processing transfer...', 'info');
-        const response = await createTransfer(amount, description);
+        showStatus('user-transfer-status', 'Processing secure transfer...', 'info');
+        
+        // Process the transfer (already secured by JWT authentication)
+        const response = await createUserTransfer(recipientUsername, amount, description);
 
         if (!response.success) {
-            throw new Error(response.error || 'Transfer failed');
+            throw new Error(response.error || 'User transfer failed');
         }
 
         // Success!
-        showStatus('transfer-status', `Transfer of $${amount.toFixed(2)} completed successfully!`, 'success');
+        showStatus('user-transfer-status', 
+            `✅ Successfully sent ₹${amount.toFixed(2)} to ${recipientUsername}!`, 
+            'success'
+        );
 
         // Clear form
-        elements.transferForm.reset();
+        elements.userTransferForm.reset();
 
         // Refresh dashboard to show updated balance and transaction
         loadDashboard();
 
     } catch (error) {
-        console.error('Transfer failed:', error);
-        showStatus('transfer-status', formatApiError(error), 'error');
-    } finally {
-        setLoading(elements.transferBtn, false);
+        console.error('User transfer failed:', error);
+        showStatus('user-transfer-status', formatApiError(error), 'error');
     }
 }
 
@@ -469,19 +605,54 @@ function updateAuditList(events) {
         return;
     }
 
-    const html = events.map(event => `
+    // Helper function to format event types for display
+    function formatEventType(eventType) {
+        if (!eventType) return 'Unknown Event';
+        
+        const eventTypeMap = {
+            'registration_challenge': 'Registration Challenge',
+            'registration': 'Registration Complete',
+            'login_failure': 'Login Failed',
+            'authentication_challenge': 'Authentication Challenge',
+            'authentication_success': 'Authentication Success',
+            'login_success': 'Login Success',
+            'login': 'Login Complete',
+            'password_verified': 'Password Verified',
+            'transaction': 'Transaction',
+            'logout': 'Logout',
+            'session_expired': 'Session Expired'
+        };
+        
+        const result = eventTypeMap[eventType] || eventType.split('_').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+        return result;
+    }
+
+    // Helper function to convert timestamp to IST
+    function toISTString(timestamp) {
+        const date = new Date(timestamp);
+        // Add 5 hours 30 minutes (330 minutes) for IST
+        const istDate = new Date(date.getTime() + (330 * 60 * 1000));
+        return istDate.toLocaleString('en-IN').replace(/,/, '') + ' IST';
+    }
+
+    const html = events.map(event => {
+        const istTime = toISTString(event.timestamp);
+        return `
         <div class="audit-item">
-            <div class="audit-event-type">${event.eventType || 'Unknown Event'}</div>
-            <div class="audit-timestamp">${new Date(event.timestamp).toLocaleString()}</div>
-            <div class="audit-details">${JSON.stringify(event.details || {}, null, 2)}</div>
+            <div class="audit-event-type">${formatEventType(event.event_type || event.eventType)}</div>
+            <div class="audit-timestamp">${istTime}</div>
+            <div class="audit-details">${JSON.stringify(event.event_data || event.details || {}, null, 2)}</div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 
     container.innerHTML = html;
 }
 
 /**
- * Check token expiration and auto-logout if needed
+ * Check token expiration and show session warnings
  */
 function checkTokenExpiration() {
     if (!isAuthenticated()) {
@@ -492,7 +663,66 @@ function checkTokenExpiration() {
         switchToTab('login');
         clearAuthToken();
         currentUser = null;
+        return;
     }
+
+    // Check time remaining and show warnings for authenticated users
+    const token = getAuthToken();
+    if (token) {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Date.now() / 1000;
+            const timeLeft = payload.exp - currentTime;
+            const minutesLeft = Math.round(timeLeft / 60);
+            
+            console.log('Session check:', { minutesLeft, timeLeft: Math.round(timeLeft) });
+
+            // Show warnings at different intervals (more frequent)
+            if (minutesLeft === 10) {
+                showGlobalNotification('⏰ Session expires in 10 minutes. Your session will auto-logout for security.', 'info');
+            } else if (minutesLeft === 5) {
+                showGlobalNotification('⏰ Session expires in 5 minutes. Your session will auto-logout for security.', 'warning');
+            } else if (minutesLeft === 2) {
+                showGlobalNotification('⚠️ Session expires in 2 minutes! Please save your work.', 'error');
+            } else if (minutesLeft === 1) {
+                showGlobalNotification('🚨 Session expires in 1 minute! Logout imminent.', 'error');
+            } else if (timeLeft <= 30) {
+                showGlobalNotification('🔒 Session expiring in 30 seconds! Logging out...', 'error');
+            } else if (timeLeft <= 0) {
+                showGlobalNotification('🔒 Session expired. Logging out for security.', 'error');
+                setTimeout(() => {
+                    clearAuthToken();
+                    currentUser = null;
+                    switchToTab('login');
+                }, 2000);
+            }
+        } catch (e) {
+            console.error('Error checking token expiration:', e);
+        }
+    }
+}
+
+/**
+ * Show global notification (for session warnings)
+ */
+function showGlobalNotification(message, type = 'info') {
+    // Create notification element if it doesn't exist
+    let notification = document.getElementById('global-notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'global-notification';
+        notification.className = 'global-notification';
+        document.body.appendChild(notification);
+    }
+
+    notification.textContent = message;
+    notification.className = `global-notification ${type} show`;
+    
+    // Auto-hide after 10 seconds for info/warning, keep error visible longer
+    const hideDelay = type === 'error' ? 15000 : 10000;
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, hideDelay);
 }
 
 /**
@@ -514,17 +744,86 @@ function showStatus(elementId, message, type = 'info') {
     }
 }
 
+
+
 /**
- * Set loading state for buttons
+ * Get current user data from JWT token
  */
-function setLoading(button, isLoading) {
-    if (isLoading) {
-        button.disabled = true;
-        button.innerHTML = '<span class="spinner"></span> Loading...';
-    } else {
-        button.disabled = false;
-        button.innerHTML = button.dataset.originalText || button.innerHTML.replace('<span class="spinner"></span> Loading...', '');
-        button.dataset.originalText = button.innerHTML;
+function getCurrentUserFromToken() {
+    const token = getAuthToken();
+    if (!token) return null;
+    
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return {
+            id: payload.userId,
+            username: payload.username
+        };
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * Request WebAuthn authentication for specific actions (like transfers)
+ */
+async function requestWebAuthnAuth(purpose = 'verification') {
+    try {
+        const currentUser = getCurrentUserFromToken();
+        if (!currentUser) {
+            throw new Error('User not authenticated');
+        }
+
+        // Request authentication challenge
+        const challengeResponse = await getAuthenticationChallenge(currentUser.id);
+        
+        if (!challengeResponse.success) {
+            throw new Error(challengeResponse.error || 'Failed to get authentication challenge');
+        }
+
+        // Perform WebAuthn authentication
+        const credential = await SimpleWebAuthnBrowser.startAuthentication(challengeResponse);
+        
+        // Verify the authentication
+        const verificationResponse = await verifyAuthentication(credential, challengeResponse.challenge);
+        
+        if (!verificationResponse.success) {
+            throw new Error(verificationResponse.error || 'Authentication verification failed');
+        }
+
+        return { success: true, purpose };
+    } catch (error) {
+        console.error(`WebAuthn ${purpose} error:`, error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Get time-appropriate greeting message
+ */
+function getTimeOfDayGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+}
+
+/**
+ * Show logout confirmation modal
+ */
+function showLogoutModal() {
+    elements.logoutModal.classList.add('show');
+    elements.confirmLogout.focus();
+}
+
+/**
+ * Hide logout confirmation modal
+ */
+function hideLogoutModal() {
+    elements.logoutModal.classList.remove('show');
+    // Redirect back to dashboard after canceling logout
+    if (isAuthenticated()) {
+        switchToTab('dashboard');
     }
 }
 
@@ -535,6 +834,7 @@ function logout() {
     clearAuthToken();
     currentUser = null;
     currentChallenge = null;
+    elements.logoutBtn.style.display = 'none';
     switchToTab('register');
     showStatus('register-status', 'You have been logged out.', 'info');
 }

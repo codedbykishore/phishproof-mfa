@@ -50,10 +50,10 @@ async function apiRequest(endpoint, options = {}) {
  */
 
 // Get registration challenge
-export async function getRegistrationChallenge(username) {
+export async function getRegistrationChallenge(username, password) {
     return apiRequest('/webauthn/register/challenge', {
         method: 'POST',
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ username, password }),
     });
 }
 
@@ -70,10 +70,15 @@ export async function verifyRegistration(credential, challenge) {
  */
 
 // Get authentication challenge
-export async function getAuthenticationChallenge(userId) {
+export async function getAuthenticationChallenge(identifier) {
+    // identifier can be either username or userId
+    const body = typeof identifier === 'string' && identifier.includes('-') 
+        ? { userId: identifier }
+        : { username: identifier };
+    
     return apiRequest('/webauthn/auth/challenge', {
         method: 'POST',
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify(body),
     });
 }
 
@@ -82,6 +87,18 @@ export async function verifyAuthentication(credential, challenge) {
     return apiRequest('/webauthn/auth/verify', {
         method: 'POST',
         body: JSON.stringify({ credential, challenge }),
+    });
+}
+
+/**
+ * Password Authentication API
+ */
+
+// Login with password (first step of two-factor authentication)
+export async function loginWithPassword(username, password) {
+    return apiRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
     });
 }
 
@@ -103,6 +120,14 @@ export async function createTransfer(amount, description) {
     return apiRequest('/transfers', {
         method: 'POST',
         body: JSON.stringify({ amount, description }),
+    });
+}
+
+// Create a user-to-user transfer
+export async function createUserTransfer(recipientUsername, amount, description) {
+    return apiRequest('/transfers/user', {
+        method: 'POST',
+        body: JSON.stringify({ recipientUsername, amount, description }),
     });
 }
 
@@ -137,15 +162,34 @@ export function clearAuthToken() {
 // Check if user is authenticated
 export function isAuthenticated() {
     const token = getAuthToken();
-    if (!token) return false;
+    console.log('🔍 Checking authentication, token:', token ? `exists (${token.substring(0, 20)}...)` : 'missing');
+    
+    if (!token) {
+        console.log('❌ No token found');
+        return false;
+    }
 
     try {
         // Basic JWT expiration check (without full decode)
         const payload = JSON.parse(atob(token.split('.')[1]));
         const currentTime = Date.now() / 1000;
-        return payload.exp > currentTime;
+        const isValid = payload.exp > currentTime;
+        console.log('🔐 Token validation:', { 
+            isValid, 
+            exp: payload.exp, 
+            now: currentTime, 
+            expiresIn: Math.round((payload.exp - currentTime) / 60) + ' minutes',
+            username: payload.username || 'unknown'
+        });
+        
+        if (!isValid) {
+            console.log('⏰ Token expired, clearing...');
+            clearAuthToken();
+        }
+        
+        return isValid;
     } catch (error) {
-        console.error('Invalid token format:', error);
+        console.error('💥 Invalid token format:', error);
         clearAuthToken();
         return false;
     }

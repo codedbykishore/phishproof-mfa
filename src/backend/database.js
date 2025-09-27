@@ -1,30 +1,54 @@
+/**
+ * @fileoverview Database utilities for PhishProof MFA Banking
+ * Handles SQLite database operations including user management, transactions,
+ * and audit logging with WebAuthn credential storage.
+ * 
+ * @author PhishProof MFA Banking
+ * @version 1.0.0
+ */
+
 import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
 
-// Get __dirname equivalent for ES modules
+/**
+ * Get __dirname equivalent for ES modules
+ */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize database connection
+/**
+ * Database connection path (uses in-memory database for testing)
+ * @constant {string}
+ */
 const dbPath =
   process.env.NODE_ENV === 'test'
     ? ':memory:'
     : path.join(__dirname, '../../data/phishproof-mfa.db');
 
+/**
+ * SQLite database instance
+ * @constant {Database}
+ */
 const db = new Database(dbPath);
 
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
 
-// Database schema
+/**
+ * Database schema definition with tables for users, transactions, and audit events
+ * @constant {string}
+ */
 const SCHEMA = `
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     username TEXT UNIQUE,
+    password_hash TEXT,
     credential_id TEXT,
     credential_public_key TEXT,
+    credential_counter INTEGER DEFAULT 0,
     balance REAL NOT NULL DEFAULT 5000.00 CHECK (balance >= 0),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login DATETIME
@@ -77,15 +101,15 @@ const userQueries = {
   // Create a new user
   get create() {
     return db.prepare(`
-      INSERT INTO users (id, username, credential_id, credential_public_key, balance)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO users (id, username, password_hash, credential_id, credential_public_key, credential_counter, balance)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
   },
 
   // Find user by ID
   get findById() {
     return db.prepare(`
-      SELECT id, username, credential_id, credential_public_key, balance, created_at, last_login
+      SELECT id, username, password_hash, credential_id, credential_public_key, balance, created_at, last_login
       FROM users
       WHERE id = ?
     `);
@@ -94,7 +118,7 @@ const userQueries = {
   // Find user by username
   get findByUsername() {
     return db.prepare(`
-      SELECT id, username, credential_id, credential_public_key, balance, created_at, last_login
+      SELECT id, username, password_hash, credential_id, credential_public_key, balance, created_at, last_login
       FROM users
       WHERE username = ?
     `);
@@ -114,6 +138,15 @@ const userQueries = {
     return db.prepare(`
       UPDATE users
       SET last_login = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+  },
+
+  // Update credential counter
+  get updateCredentialCounter() {
+    return db.prepare(`
+      UPDATE users
+      SET credential_counter = ?
       WHERE id = ?
     `);
   },
@@ -198,11 +231,26 @@ const auditQueries = {
 };
 
 // User model wrapper functions
-function createUser(id, username = null, credentialId = null, credentialPublicKey = null, initialBalance = 5000.0) {
+// Create a new user with WebAuthn credential
+function createUser(id, username, passwordHash, credentialId, credentialPublicKey, credentialCounter = 0) {
   try {
-    const result = userQueries.create.run(id, username, credentialId, credentialPublicKey, initialBalance);
-    return { success: true, userId: id, changes: result.changes };
+    const result = userQueries.create.run(
+      id,
+      username,
+      passwordHash,
+      credentialId,
+      credentialPublicKey,
+      credentialCounter,
+      5000.00 // Default balance
+    );
+    
+    return {
+      success: true,
+      userId: id,
+      changes: result.changes,
+    };
   } catch (error) {
+    console.error('Create user failed:', error);
     return { success: false, error: error.message };
   }
 }
@@ -240,9 +288,26 @@ function updateUserBalance(id, newBalance) {
 
 function updateUserLastLogin(id) {
   try {
+    console.log('🕐 Updating last login for user:', id);
     const result = userQueries.updateLastLogin.run(id);
+    console.log('🕐 Last login update result:', { success: result.changes > 0, changes: result.changes });
     return { success: result.changes > 0, changes: result.changes };
   } catch (error) {
+    console.error('🕐 Last login update error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Update user's credential counter
+function updateUserCredentialCounter(userId, counter) {
+  try {
+    const result = userQueries.updateCredentialCounter.run(counter, userId);
+    return {
+      success: true,
+      changes: result.changes,
+    };
+  } catch (error) {
+    console.error('Update credential counter failed:', error);
     return { success: false, error: error.message };
   }
 }
@@ -359,8 +424,25 @@ function cleanupOldAuditEvents() {
   }
 }
 
-// Initialize database on module load
-initializeDatabase();
+// Password utility functions
+async function hashPassword(password) {
+  try {
+    const saltRounds = 12;
+    const hash = await bcrypt.hash(password, saltRounds);
+    return { success: true, hash };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+async function verifyPassword(password, hash) {
+  try {
+    const isValid = await bcrypt.compare(password, hash);
+    return { success: true, isValid };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
 
 export {
   // Database instance (for advanced operations)
@@ -372,6 +454,7 @@ export {
   findUserByUsername,
   updateUserBalance,
   updateUserLastLogin,
+  updateUserCredentialCounter,
   getAllUsers,
 
   // Transaction functions
@@ -384,6 +467,10 @@ export {
   getUserAuditEvents,
   getAllAuditEvents,
   cleanupOldAuditEvents,
+
+  // Password functions
+  hashPassword,
+  verifyPassword,
 
   // Database management
   initializeDatabase,

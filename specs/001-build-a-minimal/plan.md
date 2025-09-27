@@ -37,18 +37,18 @@
 - Phase 3-4: Implementation execution (manual or via tools)
 
 ## Summary
-Build a minimal single-page banking prototype demonstrating phishing-resistant MFA using WebAuthn/Passkey authentication. The application will feature a complete user journey from registration through dashboard interaction, with in-memory SQLite backend for demo purposes. Technical approach uses Vite + vanilla HTML/CSS/JS frontend with Node/Express backend, focusing on WebAuthn implementation and audit logging to prove security effectiveness.
+Build a minimal single-page banking prototype demonstrating phishing-resistant MFA using hybrid authentication (password + WebAuthn/Passkey). The application will feature a complete user journey from registration through dashboard interaction, with SQLite backend for demo purposes. Technical approach uses Vite + vanilla HTML/CSS/JS frontend with Node/Express backend, focusing on two-factor authentication implementation and audit logging to prove security effectiveness.
 
 ## Technical Context
 **Language/Version**: JavaScript (ES2020+), Node.js 18+  
-**Primary Dependencies**: Vite, Express.js, better-sqlite3 (in-memory SQLite), WebAuthn libraries  
-**Storage**: In-memory SQLite database for demo purposes  
+**Primary Dependencies**: Vite, Express.js, better-sqlite3 (SQLite), WebAuthn libraries, bcryptjs (password hashing)  
+**Storage**: SQLite database with password hashing for demo purposes  
 **Testing**: Jest for unit tests, Supertest for API integration tests  
 **Target Platform**: Web browsers with WebAuthn support (Chrome, Firefox, Safari, Edge)  
 **Project Type**: Web application (frontend + backend)  
-**Performance Goals**: WebAuthn operations ≤1 second, page loads ≤3 seconds on 3G  
-**Constraints**: Prototype/demo scope, in-memory persistence only, no real financial data  
-**Scale/Scope**: Single-user demo application, ~500 lines of code, 4 main UI sections
+**Performance Goals**: Authentication operations ≤1 second, page loads ≤3 seconds on 3G  
+**Constraints**: Prototype/demo scope, local SQLite persistence, no real financial data  
+**Scale/Scope**: Single-user demo application, ~600 lines of code, 4 main UI sections, two-factor authentication
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
@@ -234,16 +234,19 @@ src/
 **Phase Status**:
 - [x] Phase 0: Research complete (/plan command)
 - [x] Phase 1: Design complete (/plan command)
-- [ ] Phase 2: Task planning complete (/plan command - describe approach only)
-- [ ] Phase 3: Tasks generated (/tasks command)
-- [ ] Phase 4: Implementation complete
-- [ ] Phase 5: Validation passed
+- [x] Phase 2: Task planning complete (/plan command - describe approach only)
+- [x] Phase 3: Tasks generated (/tasks command)
+- [x] Phase 4: Implementation complete (Authentication core + Enhanced UX features)
+- [ ] Phase 4.1: UX Bug Fixes & Enhancements (8 issues identified for next iteration)
+- [x] Phase 5: Validation passed (75 passing tests, production build successful)
 
 **Gate Status**:
 - [x] Initial Constitution Check: PASS
 - [x] Post-Design Constitution Check: PASS
 - [x] All NEEDS CLARIFICATION resolved
-- [ ] Complexity deviations documented
+- [x] Complexity deviations documented
+- [x] Core authentication implemented and tested
+- [x] Enhanced user experience features planned and specified
 
 ---
 *Based on Constitution v1.0.0 - See `/memory/constitution.md`*
