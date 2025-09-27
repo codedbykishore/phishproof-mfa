@@ -1,24 +1,45 @@
+/**
+ * @fileoverview Database utilities for PhishProof MFA Banking
+ * Handles SQLite database operations including user management, transactions,
+ * and audit logging with WebAuthn credential storage.
+ * 
+ * @author PhishProof MFA Banking
+ * @version 1.0.0
+ */
+
 import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 
-// Get __dirname equivalent for ES modules
+/**
+ * Get __dirname equivalent for ES modules
+ */
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize database connection
+/**
+ * Database connection path (uses in-memory database for testing)
+ * @constant {string}
+ */
 const dbPath =
   process.env.NODE_ENV === 'test'
     ? ':memory:'
     : path.join(__dirname, '../../data/phishproof-mfa.db');
 
+/**
+ * SQLite database instance
+ * @constant {Database}
+ */
 const db = new Database(dbPath);
 
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
 
-// Database schema
+/**
+ * Database schema definition with tables for users, transactions, and audit events
+ * @constant {string}
+ */
 const SCHEMA = `
 -- Users table
 CREATE TABLE IF NOT EXISTS users (

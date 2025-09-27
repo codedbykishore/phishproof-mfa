@@ -1,6 +1,19 @@
 # Tasks: Build a Minimal Banking Prototype with Phishing-Resistant MFA
 
-**Input**: Design docu## Phase 3.6: Polish & Testing
+**Input**: Design docu## Phase 3.6: Polis## Phase 3.6: Polish & UX Enhancements
+- [x] T042 [P] Add unit tests for WebAuthn utilities in tests/unit/webauthn-utils.test.js
+- [x] T043 [P] Add unit tests for database operations in tests/unit/database.test.js
+- [x] T044 [P] Add unit tests for authentication middleware in tests/unit/auth.test.js
+- [x] T045 Performance test WebAuthn operations (<1 second) in tests/performance/webauthn-performance.test.js
+- [x] T046 Performance test page load times (<3 seconds) in tests/performance/page-load-performance.test.js
+- [x] T047 [P] Create README.md with setup and demo instructions
+- [x] T048 [P] Add JSDoc comments and code documentation
+- [x] T049 Configure Vite build for production deployment
+- [x] T050 Run quickstart.md validation scenarios manually
+
+## Phase 3.7: Final UX & Security Features (Enhanced Implementation)
+- [x] T051 Add personalized welcome message in dashboard with user greeting in src/frontend/js/app.js
+- [x] T052 Implement red logout button with confirmation warning dialog in src/frontend/css/styles.css and src/frontend/js/app.jsg
 - [x] T042 [P] Add unit tests for WebAuthn utilities in tests/unit/test-webauthn-utils.js
 - [x] T043 [P] Add unit tests for database operations in tests/unit/test-database.js
 - [x] T044 [P] Add unit tests for authentication middleware in tests/unit/test-auth.js

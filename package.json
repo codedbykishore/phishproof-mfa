@@ -7,10 +7,14 @@
   "scripts": {
     "dev": "node server.js",
     "build": "vite build",
+    "build:prod": "NODE_ENV=production vite build",
     "preview": "vite preview",
     "server": "node server.js",
+    "server:prod": "NODE_ENV=production node server.js",
     "start": "node server.js",
     "test": "npm run test:unit && npm run test:contract && npm run test:integration",
+    "test:performance": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/performance",
+    "test:all": "npm run test && npm run test:performance",
     "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/unit",
     "test:contract": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/contract",
     "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/integration",
@@ -18,7 +22,8 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint src/ tests/ --fix",
-    "format": "prettier --write src/ tests/"
+    "format": "prettier --write src/ tests/",
+    "deploy": "npm run build:prod && npm run server:prod"
   },
   "keywords": [
     "webauthn",
