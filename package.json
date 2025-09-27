@@ -48,6 +48,7 @@
         "statements": 80
       }
     },
+    "extensionsToTreatAsEsm": [".js"],
     "transform": {},
     "transformIgnorePatterns": [
       "node_modules/(?!(supertest)/)"

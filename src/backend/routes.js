@@ -134,7 +134,7 @@ router.post('/webauthn/register/verify', async (req, res) => {
     }
 
     // Log successful registration
-    createAuditEvent(userResult.user.id, 'registration_success', {
+    createAuditEvent(verificationResult.userID, 'registration', {
       username: verificationResult.username,
       credentialId: verificationResult.credentialId,
       ipAddress: req.ip,
@@ -143,7 +143,7 @@ router.post('/webauthn/register/verify', async (req, res) => {
 
     res.json({
       success: true,
-      userId: userResult.user.id,
+      userId: verificationResult.userID,
       message: 'Registration successful',
     });
   } catch (error) {

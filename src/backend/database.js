@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 CREATE TABLE IF NOT EXISTS audit_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT,
-    event_type TEXT NOT NULL CHECK (event_type IN ('registration', 'login_success', 'login_failure', 'transfer')),
+    event_type TEXT NOT NULL CHECK (event_type IN ('registration', 'registration_challenge', 'registration_failed', 'authentication_challenge', 'authentication_success', 'authentication_failed', 'login_success', 'login_failure', 'transfer')),
     event_data TEXT NOT NULL,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ip_address TEXT,
