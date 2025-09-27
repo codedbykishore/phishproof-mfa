@@ -41,11 +41,16 @@ function init() {
     checkWebAuthnSupport();
 
     // Check if user is already authenticated
+    console.log('🚀 App initialization, checking authentication...');
+    console.log('📦 localStorage authToken:', localStorage.getItem('authToken') ? 'exists' : 'missing');
+    
     if (isAuthenticated()) {
+        console.log('✅ User is authenticated, loading dashboard...');
         elements.logoutBtn.style.display = 'inline-block';
         switchToTab('dashboard');
-        loadDashboard();
+        // Note: loadDashboard() will be called by switchToTab automatically
     } else {
+        console.log('❌ User not authenticated, switching to register tab...');
         switchToTab('register');
     }
 
@@ -58,15 +63,16 @@ function init() {
  */
 function cacheElements() {
     elements = {
-        // Navigation
+        // Tabs
         tabButtons: document.querySelectorAll('.tab-button'),
+        tabContents: document.querySelectorAll('.tab-content'),
 
-        // Registration
+        // Register
         registerForm: document.getElementById('register-form'),
-    registerBtn: document.getElementById('register-btn'),
-    registerUsername: document.getElementById('register-username'),
-    registerPassword: document.getElementById('register-password'),
-    registerConfirmPassword: document.getElementById('register-confirm-password'),
+        registerUsername: document.getElementById('register-username'),
+        registerPassword: document.getElementById('register-password'),
+        registerConfirmPassword: document.getElementById('register-confirm-password'),
+        registerBtn: document.getElementById('register-btn'),
         registerStatus: document.getElementById('register-status'),
 
         // Login
@@ -78,6 +84,8 @@ function cacheElements() {
 
         // Dashboard
         dashboardContent: document.getElementById('dashboard-content'),
+        welcomeMessage: document.getElementById('welcome-message'),
+        welcomeSubtitle: document.getElementById('welcome-subtitle'),
         userUsername: document.getElementById('user-username'),
         userBalance: document.getElementById('user-balance'),
         userLastLogin: document.getElementById('user-last-login'),
@@ -99,10 +107,16 @@ function cacheElements() {
 
         // Logout
         logoutBtn: document.getElementById('logout-btn'),
+        logoutModal: document.getElementById('logout-modal'),
+        cancelLogout: document.getElementById('cancel-logout'),
+        confirmLogout: document.getElementById('confirm-logout'),
     };
-}
-
-/**
+    
+    // Verify critical elements are cached
+    if (!elements.tabButtons || elements.tabButtons.length === 0) {
+        console.error('❌ Critical error: No tab buttons found!');
+    }
+}/**
  * Set up event listeners
  */
 function setupEventListeners() {
@@ -126,8 +140,32 @@ function setupEventListeners() {
     // Audit refresh button
     elements.refreshAuditBtn.addEventListener('click', loadAuditLog);
 
-    // Logout button
-    elements.logoutBtn.addEventListener('click', logout);
+    // Logout button - show confirmation modal
+    elements.logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        showLogoutModal();
+    });
+
+    // Modal event listeners
+    elements.cancelLogout.addEventListener('click', hideLogoutModal);
+    elements.confirmLogout.addEventListener('click', () => {
+        hideLogoutModal();
+        logout();
+    });
+
+    // Close modal on background click
+    elements.logoutModal.addEventListener('click', (e) => {
+        if (e.target === elements.logoutModal) {
+            hideLogoutModal();
+        }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && elements.logoutModal.classList.contains('show')) {
+            hideLogoutModal();
+        }
+    });
 }
 
 /**
@@ -175,8 +213,10 @@ function switchToTab(tabName) {
     switch (tabName) {
         case 'dashboard':
             if (isAuthenticated()) {
+                console.log('📊 Loading dashboard for authenticated user...');
                 loadDashboard();
             } else {
+                console.log('🔐 User not authenticated, showing login prompt...');
                 showStatus('dashboard-status', 'Please log in to view your dashboard.', 'info');
             }
             break;
@@ -367,14 +407,53 @@ async function loadDashboard() {
 
     try {
         showStatus('dashboard-status', 'Loading dashboard...', 'info');
+        console.log('📊 Loading dashboard, token exists:', !!getAuthToken());
+        
         const response = await getDashboard();
+        console.log('📊 Dashboard API response:', response);
 
         if (!response.success) {
+            // Check if it's an authentication error
+            if (response.error && (
+                response.error.includes('token') || 
+                response.error.includes('unauthorized') ||
+                response.error.includes('Access token required')
+            )) {
+                console.log('🔐 Authentication failed, clearing token and redirecting...');
+                clearAuthToken();
+                currentUser = null;
+                elements.logoutBtn.style.display = 'none';
+                switchToTab('login');
+                showStatus('login-status', 'Your session has expired. Please log in again.', 'info');
+                return;
+            }
+            
             throw new Error(response.error || 'Failed to load dashboard');
         }
 
+        // Debug: Check if elements are properly cached
+        console.log('🎯 Welcome elements check:', {
+            welcomeMessage: elements.welcomeMessage,
+            welcomeSubtitle: elements.welcomeSubtitle
+        });
+
         // Update user info
         currentUser = response.user;
+        
+        // Update personalized welcome message with defensive checks
+        const username = currentUser.username || 'User';
+        const timeOfDay = getTimeOfDayGreeting();
+        
+        if (elements.welcomeMessage) {
+            elements.welcomeMessage.textContent = `${timeOfDay}, ${username}!`;
+        }
+        
+        if (elements.welcomeSubtitle) {
+            elements.welcomeSubtitle.textContent = `Your secure banking dashboard • Last login: ${
+                currentUser.lastLogin ? new Date(currentUser.lastLogin).toLocaleString() : 'First time'
+            }`;
+        }
+        
         elements.userUsername.textContent = currentUser.username || '-';
         elements.userBalance.textContent = (currentUser.balance || 0).toFixed(2);
         elements.userLastLogin.textContent = currentUser.lastLogin
@@ -563,6 +642,31 @@ function setLoading(button, isLoading) {
         button.innerHTML = button.dataset.originalText || button.innerHTML.replace('<span class="spinner"></span> Loading...', '');
         button.dataset.originalText = button.innerHTML;
     }
+}
+
+/**
+ * Get time-appropriate greeting message
+ */
+function getTimeOfDayGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+}
+
+/**
+ * Show logout confirmation modal
+ */
+function showLogoutModal() {
+    elements.logoutModal.classList.add('show');
+    elements.confirmLogout.focus();
+}
+
+/**
+ * Hide logout confirmation modal
+ */
+function hideLogoutModal() {
+    elements.logoutModal.classList.remove('show');
 }
 
 /**

@@ -154,15 +154,34 @@ export function clearAuthToken() {
 // Check if user is authenticated
 export function isAuthenticated() {
     const token = getAuthToken();
-    if (!token) return false;
+    console.log('🔍 Checking authentication, token:', token ? `exists (${token.substring(0, 20)}...)` : 'missing');
+    
+    if (!token) {
+        console.log('❌ No token found');
+        return false;
+    }
 
     try {
         // Basic JWT expiration check (without full decode)
         const payload = JSON.parse(atob(token.split('.')[1]));
         const currentTime = Date.now() / 1000;
-        return payload.exp > currentTime;
+        const isValid = payload.exp > currentTime;
+        console.log('🔐 Token validation:', { 
+            isValid, 
+            exp: payload.exp, 
+            now: currentTime, 
+            expiresIn: Math.round((payload.exp - currentTime) / 60) + ' minutes',
+            username: payload.username || 'unknown'
+        });
+        
+        if (!isValid) {
+            console.log('⏰ Token expired, clearing...');
+            clearAuthToken();
+        }
+        
+        return isValid;
     } catch (error) {
-        console.error('Invalid token format:', error);
+        console.error('💥 Invalid token format:', error);
         clearAuthToken();
         return false;
     }

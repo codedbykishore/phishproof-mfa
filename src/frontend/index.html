@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PhishProof MFA Banking</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='7' fill='%234F46E5'/><text x='8' y='12' text-anchor='middle' fill='white' font-size='10' font-weight='bold'>P</text></svg>">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -69,7 +70,10 @@
 
             <!-- Dashboard Tab -->
             <section id="dashboard-tab" class="tab-content">
-                <h2>Account Dashboard</h2>
+                <div id="welcome-section" class="welcome-section">
+                    <h2 id="welcome-message">Welcome back!</h2>
+                    <p id="welcome-subtitle" class="welcome-subtitle">Secure banking with phishing-resistant authentication</p>
+                </div>
                 <div id="dashboard-content">
                     <div class="dashboard-section">
                         <h3>Account Information</h3>
@@ -125,6 +129,29 @@
                 <div id="audit-status" class="status-message"></div>
             </section>
         </main>
+
+        <!-- Logout Confirmation Modal -->
+        <div id="logout-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>🔒 Secure Logout Confirmation</h3>
+                </div>
+                <div class="modal-body">
+                    <p><strong>You are about to end your secure session.</strong></p>
+                    <p>This will:</p>
+                    <ul>
+                        <li>✓ Securely clear your authentication token</li>
+                        <li>✓ Log this logout event for security audit</li>
+                        <li>✓ Require WebAuthn re-authentication to access your account</li>
+                    </ul>
+                    <p class="security-note">🛡️ <strong>Security tip:</strong> Always logout when using shared devices!</p>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancel-logout" class="btn btn-secondary">Cancel</button>
+                    <button id="confirm-logout" class="btn btn-danger">Logout Securely</button>
+                </div>
+            </div>
+        </div>
 
         <footer class="footer">
             <p>&copy; 2025 PhishProof MFA Banking - Demo Application</p>

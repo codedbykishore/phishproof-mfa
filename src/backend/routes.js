@@ -481,6 +481,7 @@ router.get('/dashboard', authenticateToken, async (req, res) => {
     }
 
     res.json({
+      success: true,
       user: {
         id: userResult.user.id,
         username: userResult.user.username,
@@ -617,6 +618,7 @@ router.get('/audit', authenticateToken, async (req, res) => {
     }
 
     res.json({
+      success: true,
       events: auditResult.events,
     });
   } catch (error) {
