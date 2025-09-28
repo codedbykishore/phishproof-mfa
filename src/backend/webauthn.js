@@ -21,15 +21,9 @@ import { randomBytes, randomUUID } from 'crypto';
  */
 const WEBAUTHN_CONFIG = {
   rpName: 'PhishProof MFA Banking',
-  rpID: process.env.NODE_ENV === 'production' ? 'your-domain.com' : 'localhost',
-  origin:
-    process.env.NODE_ENV === 'production'
-      ? 'https://your-domain.com'
-      : 'http://localhost:3000',
-  expectedOrigin:
-    process.env.NODE_ENV === 'production'
-      ? 'https://your-domain.com'
-      : 'http://localhost:3000',
+  rpID: process.env.WEBAUTHN_RP_ID || (process.env.NODE_ENV === 'production' ? 'phishproof-mfa.koyeb.app' : 'localhost'),
+  origin: process.env.WEBAUTHN_ORIGIN || (process.env.NODE_ENV === 'production' ? 'https://phishproof-mfa.koyeb.app' : 'http://localhost:3000'),
+  expectedOrigin: process.env.WEBAUTHN_ORIGIN || (process.env.NODE_ENV === 'production' ? 'https://phishproof-mfa.koyeb.app' : 'http://localhost:3000'),
 };
 
 /**

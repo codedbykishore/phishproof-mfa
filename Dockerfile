@@ -20,6 +20,9 @@ COPY . .
 # Create data directory for SQLite database
 RUN mkdir -p data
 
+# Set production environment
+ENV NODE_ENV=production
+
 # Expose the port the app runs on
 EXPOSE 3000
 
