@@ -2,6 +2,8 @@
 
 A minimal banking prototype demonstrating phishing-resistant authentication using WebAuthn (Passkeys). This application showcases how modern web standards can provide secure, passwordless authentication that resists phishing attacks.
 
+Check out the live demo here: [https://phishproof-mfa.koyeb.app/](https://phishproof-mfa.koyeb.app/)
+
 ## 🚀 Features
 
 - **Phishing-Resistant Authentication**: WebAuthn/Passkey-based registration and login
